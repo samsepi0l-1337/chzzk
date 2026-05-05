@@ -1,4 +1,4 @@
-import { io, type Socket } from "socket.io-client";
+import io, { type Socket } from "socket.io-client";
 import { normalizeDonation, type ChzzkDonationEvent } from "./donation-parser";
 import { CHZZK_OPENAPI_BASE_URL } from "./config";
 import type { MinecraftWebhookClient } from "./webhook-client";

@@ -30,7 +30,7 @@ const { ioMock, socket } = vi.hoisted(() => {
 });
 
 vi.mock("socket.io-client", () => ({
-  io: ioMock
+  default: ioMock
 }));
 
 const sessionConfig = {
