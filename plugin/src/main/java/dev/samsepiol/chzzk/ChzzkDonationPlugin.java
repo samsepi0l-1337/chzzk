@@ -56,7 +56,7 @@ public final class ChzzkDonationPlugin extends JavaPlugin {
         targetService = new TargetService(stateStore);
         deathCountService = new DeathCountService(stateStore.deathCount(), stateStore::setDeathCount);
         sidebarService = new SidebarService(stateStore, targetService, deathCountService);
-        effectExecutor = new DonationEffectExecutor(targetService);
+        effectExecutor = new DonationEffectExecutor(targetService, getConfig().getInt("teleport.radius", 64));
 
         DonationService donationService = new DonationService(
                 stateStore.recentEventIds(),

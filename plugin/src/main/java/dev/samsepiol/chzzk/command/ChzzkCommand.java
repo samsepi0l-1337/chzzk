@@ -7,6 +7,7 @@ import dev.samsepiol.chzzk.state.DeathCountService;
 import dev.samsepiol.chzzk.state.TargetService;
 import java.time.Instant;
 import java.util.List;
+import java.util.OptionalInt;
 import java.util.UUID;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
@@ -110,14 +111,26 @@ public final class ChzzkCommand implements TabExecutor {
             sender.sendMessage("/chzzk simulate <amount>");
             return;
         }
-        int amount = Integer.parseInt(args[1]);
+        OptionalInt amount = parseSimulationAmount(args[1]);
+        if (amount.isEmpty()) {
+            sender.sendMessage("/chzzk simulate <amount>");
+            return;
+        }
         var result = donationService.handle(new DonationEvent(
                 "simulate-" + UUID.randomUUID(),
-                amount,
+                amount.getAsInt(),
                 sender.getName(),
                 "manual simulation",
                 Instant.now()));
         sidebarService.update();
         sender.sendMessage("Simulation result: " + result.status());
+    }
+
+    static OptionalInt parseSimulationAmount(String value) {
+        try {
+            return OptionalInt.of(Integer.parseInt(value));
+        } catch (NumberFormatException exception) {
+            return OptionalInt.empty();
+        }
     }
 }

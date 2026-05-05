@@ -23,6 +23,7 @@ services:
         required: false
     environment:
       CHZZK_TOKEN_STORE: /data/.chzzk-tokens.json
+      MINECRAFT_WEBHOOK_SECRET: ${MINECRAFT_WEBHOOK_SECRET:-replace-with-shared-secret}
       MINECRAFT_WEBHOOK_URL: http://paper:29371/chzzk/donations
     depends_on:
       - paper

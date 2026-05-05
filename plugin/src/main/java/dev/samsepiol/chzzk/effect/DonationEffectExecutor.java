@@ -20,9 +20,15 @@ public final class DonationEffectExecutor implements Consumer<DonationTier> {
     private final TargetService targetService;
     private final Set<UUID> pluginKills = ConcurrentHashMap.newKeySet();
     private final Random random = new Random();
+    private final int teleportRadius;
 
     public DonationEffectExecutor(TargetService targetService) {
+        this(targetService, 64);
+    }
+
+    public DonationEffectExecutor(TargetService targetService, int teleportRadius) {
         this.targetService = targetService;
+        this.teleportRadius = Math.max(0, teleportRadius);
     }
 
     @Override
@@ -65,8 +71,9 @@ public final class DonationEffectExecutor implements Consumer<DonationTier> {
 
     private void teleportRandomly(Player target) {
         Location current = target.getLocation();
-        int offsetX = random.nextInt(129) - 64;
-        int offsetZ = random.nextInt(129) - 64;
+        int bound = teleportRadius * 2 + 1;
+        int offsetX = random.nextInt(bound) - teleportRadius;
+        int offsetZ = random.nextInt(bound) - teleportRadius;
         Location destination = current.clone().add(offsetX, 0, offsetZ);
         destination.setY(current.getWorld().getHighestBlockYAt(destination) + 1);
         target.teleport(destination);
