@@ -1,0 +1,7 @@
+{
+  "private": true,
+  "scripts": {
+    "test": "npm --prefix bridge test",
+    "build": "npm --prefix bridge run build"
+  }
+}

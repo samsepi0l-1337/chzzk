@@ -1,5 +1,8 @@
 .env
 node_modules/
+dist/
+build/
+.gradle/
 .vscode/
 .DS_Store
 .omx/
