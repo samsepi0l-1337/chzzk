@@ -6,6 +6,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 
 final class DonationServiceTest {
@@ -49,6 +50,24 @@ final class DonationServiceTest {
 
         assertEquals(DonationStatus.NO_TARGET, missing.handle(event("evt-3", 1000)).status());
         assertEquals(DonationStatus.TARGET_OFFLINE, offline.handle(event("evt-4", 1000)).status());
+    }
+
+    @Test
+    void persistsSeenEventsAndReportsEffectFailures() {
+        AtomicInteger saves = new AtomicInteger();
+        DonationService service = new DonationService(
+                new HashSet<>(),
+                () -> TargetAvailability.AVAILABLE,
+                tier -> {
+                    throw new IllegalStateException("boom");
+                },
+                saves::incrementAndGet);
+
+        DonationResult result = service.handle(event("evt-5", 1000));
+
+        assertEquals(DonationStatus.EFFECT_FAILED, result.status());
+        assertEquals("boom", result.message());
+        assertEquals(1, saves.get());
     }
 
     private static DonationEvent event(String id, int amount) {

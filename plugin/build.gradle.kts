@@ -1,5 +1,6 @@
 plugins {
     java
+    jacoco
     id("com.gradleup.shadow") version "9.4.1"
 }
 
@@ -26,6 +27,52 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+    finalizedBy(tasks.jacocoTestReport)
+}
+
+val coverageExcludes = listOf(
+    "**/ChzzkDonationPlugin*",
+    "**/command/**",
+    "**/display/SidebarService*",
+    "**/effect/**",
+    "**/listener/**",
+    "**/state/TargetService*",
+    "**/webhook/DonationWebhookServer*"
+)
+
+tasks.jacocoTestReport {
+    dependsOn(tasks.test)
+    classDirectories.setFrom(layout.buildDirectory.dir("classes/java/main").map { directory ->
+        fileTree(directory.asFile) {
+            exclude(coverageExcludes)
+        }
+    })
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+    }
+}
+
+tasks.jacocoTestCoverageVerification {
+    dependsOn(tasks.test)
+    classDirectories.setFrom(layout.buildDirectory.dir("classes/java/main").map { directory ->
+        fileTree(directory.asFile) {
+            exclude(coverageExcludes)
+        }
+    })
+    violationRules {
+        rule {
+            limit {
+                counter = "LINE"
+                value = "COVEREDRATIO"
+                minimum = "1.0".toBigDecimal()
+            }
+        }
+    }
+}
+
+tasks.check {
+    dependsOn(tasks.jacocoTestCoverageVerification)
 }
 
 tasks.shadowJar {

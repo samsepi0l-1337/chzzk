@@ -25,7 +25,6 @@ export class MinecraftWebhookClient {
   async send(payload: MinecraftDonationPayload): Promise<void> {
     const body = JSON.stringify(payload);
     const signature = signBody(body, this.config.sharedSecret);
-    let lastError: unknown;
 
     for (let attempt = 1; attempt <= this.maxAttempts; attempt += 1) {
       try {
@@ -44,9 +43,7 @@ export class MinecraftWebhookClient {
         if (!isTransientStatus(response.status) || attempt === this.maxAttempts) {
           throw new Error(`Minecraft webhook failed: ${response.status} ${await response.text()}`);
         }
-        lastError = new Error(`Minecraft webhook transient failure: ${response.status}`);
       } catch (error) {
-        lastError = error;
         if (attempt === this.maxAttempts) {
           throw error;
         }
@@ -54,8 +51,6 @@ export class MinecraftWebhookClient {
 
       await delay(this.retryDelayMs);
     }
-
-    throw lastError instanceof Error ? lastError : new Error("Minecraft webhook failed");
   }
 }
 

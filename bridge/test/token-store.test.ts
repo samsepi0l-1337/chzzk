@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, describe, expect, it } from "vitest";
@@ -13,6 +13,13 @@ afterEach(async () => {
 });
 
 describe("TokenStore", () => {
+  it("returns null when no token file exists", async () => {
+    tempDir = await mkdtemp(join(tmpdir(), "chzzk-token-"));
+    const store = new TokenStore(join(tempDir, "missing.json"));
+
+    await expect(store.load()).resolves.toBeNull();
+  });
+
   it("persists replacement tokens", async () => {
     tempDir = await mkdtemp(join(tmpdir(), "chzzk-token-"));
     const path = join(tempDir, "tokens.json");
@@ -34,5 +41,29 @@ describe("TokenStore", () => {
 
     await expect(store.load()).resolves.toMatchObject({ refreshToken: "next-refresh" });
     expect(await readFile(path, "utf8")).toContain("next-access");
+  });
+
+  it("propagates unreadable and malformed token files", async () => {
+    tempDir = await mkdtemp(join(tmpdir(), "chzzk-token-"));
+
+    await expect(new TokenStore(tempDir).load()).rejects.toThrow();
+
+    const path = join(tempDir, "broken.json");
+    await writeFile(path, "{", "utf8");
+    await expect(new TokenStore(path).load()).rejects.toThrow(SyntaxError);
+  });
+
+  it("reports save failures", async () => {
+    tempDir = await mkdtemp(join(tmpdir(), "chzzk-token-"));
+    const parentFile = join(tempDir, "parent-file");
+    await writeFile(parentFile, "", "utf8");
+    const store = new TokenStore(join(parentFile, "tokens.json"));
+
+    await expect(store.save({
+      accessToken: "access",
+      refreshToken: "refresh",
+      tokenType: "Bearer",
+      expiresAt: "2026-05-06T00:00:00.000Z"
+    })).rejects.toThrow();
   });
 });

@@ -1,6 +1,7 @@
 package dev.samsepiol.chzzk.webhook;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
@@ -14,6 +15,15 @@ final class HmacVerifierTest {
 
         assertTrue(verifier.verify(body, header));
         assertFalse(verifier.verify(body, "sha256=bad"));
+        assertFalse(verifier.verify(body, "bad"));
         assertFalse(verifier.verify(body, null));
+    }
+
+    @Test
+    void reportsSigningFailures() {
+        HmacVerifier verifier = new HmacVerifier(null);
+        byte[] body = "{}".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+
+        assertThrows(IllegalStateException.class, () -> verifier.sign(body));
     }
 }
