@@ -19,9 +19,12 @@ describe("loadBridgeConfig", () => {
     expect(config.tokenStorePath).toMatch(/\.chzzk-tokens\.json$/);
     expect(config.minecraftWebhook).toEqual({
       url: "http://127.0.0.1:29371/chzzk/donations",
+      healthUrl: "http://127.0.0.1:29371/chzzk/donations/health",
       sharedSecret: "webhook-secret",
       maxAttempts: 3,
-      retryDelayMs: 500
+      retryDelayMs: 500,
+      readinessMaxAttempts: 30,
+      readinessRetryDelayMs: 1000
     });
   });
 
@@ -31,16 +34,22 @@ describe("loadBridgeConfig", () => {
       CHZZK_OPENAPI_BASE_URL: "https://example.test",
       CHZZK_TOKEN_STORE: "/tmp/token.json",
       MINECRAFT_WEBHOOK_URL: "http://minecraft.test/hook",
+      MINECRAFT_WEBHOOK_HEALTH_URL: "http://minecraft.test/ready",
       WEBHOOK_MAX_ATTEMPTS: "5",
-      WEBHOOK_RETRY_DELAY_MS: "0"
+      WEBHOOK_RETRY_DELAY_MS: "0",
+      WEBHOOK_READY_MAX_ATTEMPTS: "2",
+      WEBHOOK_READY_RETRY_DELAY_MS: "0"
     });
 
     expect(config.chzzk.baseUrl).toBe("https://example.test");
     expect(config.tokenStorePath).toBe("/tmp/token.json");
     expect(config.minecraftWebhook).toMatchObject({
       url: "http://minecraft.test/hook",
+      healthUrl: "http://minecraft.test/ready",
       maxAttempts: 5,
-      retryDelayMs: 0
+      retryDelayMs: 0,
+      readinessMaxAttempts: 2,
+      readinessRetryDelayMs: 0
     });
   });
 
@@ -75,6 +84,14 @@ describe("loadBridgeConfig", () => {
       ...requiredEnv,
       WEBHOOK_RETRY_DELAY_MS: "-1"
     })).toThrow(/WEBHOOK_RETRY_DELAY_MS must be a non-negative integer/);
+    expect(() => loadBridgeConfig({
+      ...requiredEnv,
+      WEBHOOK_READY_MAX_ATTEMPTS: "0"
+    })).toThrow(/WEBHOOK_READY_MAX_ATTEMPTS must be greater than 0/);
+    expect(() => loadBridgeConfig({
+      ...requiredEnv,
+      WEBHOOK_READY_RETRY_DELAY_MS: "-1"
+    })).toThrow(/WEBHOOK_READY_RETRY_DELAY_MS must be a non-negative integer/);
     expect(loadBridgeConfig({
       ...requiredEnv,
       WEBHOOK_RETRY_DELAY_MS: ""

@@ -1,6 +1,6 @@
 import { createHmac } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { MinecraftWebhookClient, signBody } from "../src/webhook-client";
+import { MinecraftWebhookClient, signBody, waitForWebhookReady } from "../src/webhook-client";
 
 describe("MinecraftWebhookClient", () => {
   it("uses default retry settings for successful delivery", async () => {
@@ -122,6 +122,113 @@ describe("MinecraftWebhookClient", () => {
     );
 
     await expect(client.send(payload())).rejects.toThrow(/500 busy/);
+  });
+
+  it("waits for webhook health before opening the live session", async () => {
+    const calls: string[] = [];
+
+    await waitForWebhookReady(
+      {
+        url: "http://paper:29371/chzzk/donations",
+        healthUrl: "http://paper:29371/chzzk/donations/health",
+        sharedSecret: "secret",
+        readinessMaxAttempts: 2,
+        readinessRetryDelayMs: 0
+      },
+      async (url, init) => {
+        calls.push(`${init.method} ${url}`);
+        return new Response("", { status: calls.length === 1 ? 503 : 200 });
+      }
+    );
+
+    expect(calls).toEqual([
+      "GET http://paper:29371/chzzk/donations/health",
+      "GET http://paper:29371/chzzk/donations/health"
+    ]);
+  });
+
+  it("reports final webhook readiness failures", async () => {
+    await expect(waitForWebhookReady(
+      {
+        url: "http://paper:29371/chzzk/donations",
+        sharedSecret: "secret",
+        readinessMaxAttempts: 1,
+        readinessRetryDelayMs: 0
+      },
+      async () => new Response("not ready", { status: 503 })
+    )).rejects.toThrow(/Minecraft webhook is not ready: 503 not ready/);
+  });
+
+  it("uses default readiness health URL and safe minimum settings", async () => {
+    const calls: string[] = [];
+
+    await waitForWebhookReady(
+      {
+        url: "http://paper:29371/chzzk/donations",
+        sharedSecret: "secret",
+        readinessMaxAttempts: 0,
+        readinessRetryDelayMs: -1
+      },
+      async (url) => {
+        calls.push(url);
+        return new Response("", { status: 200 });
+      }
+    );
+
+    expect(calls).toEqual(["http://paper:29371/chzzk/donations/health"]);
+  });
+
+  it("uses default readiness attempt and delay settings", async () => {
+    const calls: string[] = [];
+
+    await waitForWebhookReady(
+      {
+        url: "http://paper:29371/chzzk/donations",
+        sharedSecret: "secret"
+      },
+      async (url) => {
+        calls.push(url);
+        return new Response("", { status: 200 });
+      }
+    );
+
+    expect(calls).toEqual(["http://paper:29371/chzzk/donations/health"]);
+  });
+
+  it("retries transient webhook readiness fetch errors", async () => {
+    let calls = 0;
+
+    await waitForWebhookReady(
+      {
+        url: "http://paper:29371/chzzk/donations",
+        sharedSecret: "secret",
+        readinessMaxAttempts: 2,
+        readinessRetryDelayMs: 0
+      },
+      async () => {
+        calls += 1;
+        if (calls === 1) {
+          throw new Error("temporary network down");
+        }
+        return new Response("", { status: 200 });
+      }
+    );
+
+    expect(calls).toBe(2);
+  });
+
+  it("rethrows final webhook readiness fetch errors", async () => {
+    await expect(waitForWebhookReady(
+      {
+        url: "http://paper:29371/chzzk/donations",
+        sharedSecret: "secret",
+        readinessMaxAttempts: 1,
+        readinessRetryDelayMs: 0
+      },
+      async () => {
+        throw new Error("network down");
+      }
+    )).rejects.toThrow(/network down/);
   });
 });
 

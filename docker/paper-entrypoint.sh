@@ -11,8 +11,9 @@ else
   echo "Set EULA=true after accepting the Minecraft EULA to start Paper." >&2
 fi
 
-if [ -n "${MINECRAFT_WEBHOOK_SECRET:-}" ]; then
-  cat > /server/plugins/ChzzkDonation/config.yml <<EOF
+: "${MINECRAFT_WEBHOOK_SECRET:?MINECRAFT_WEBHOOK_SECRET is required}"
+
+cat > /server/plugins/ChzzkDonation/config.yml <<EOF
 webhook:
   host: "0.0.0.0"
   port: ${MINECRAFT_WEBHOOK_PORT:-29371}
@@ -23,6 +24,5 @@ sidebar:
 teleport:
   radius: 64
 EOF
-fi
 
 exec "$@"

@@ -11,13 +11,17 @@ export interface BridgeConfig {
   tokenStorePath: string;
   minecraftWebhook: {
     url: string;
+    healthUrl: string;
     sharedSecret: string;
     maxAttempts: number;
     retryDelayMs: number;
+    readinessMaxAttempts: number;
+    readinessRetryDelayMs: number;
   };
 }
 
 export function loadBridgeConfig(env: NodeJS.ProcessEnv = process.env): BridgeConfig {
+  const webhookUrl = env.MINECRAFT_WEBHOOK_URL ?? "http://127.0.0.1:29371/chzzk/donations";
   return {
     chzzk: {
       clientId: required(env.CHZZK_CLIENT_ID, "CHZZK_CLIENT_ID"),
@@ -26,10 +30,21 @@ export function loadBridgeConfig(env: NodeJS.ProcessEnv = process.env): BridgeCo
     },
     tokenStorePath: resolve(env.CHZZK_TOKEN_STORE ?? ".chzzk-tokens.json"),
     minecraftWebhook: {
-      url: env.MINECRAFT_WEBHOOK_URL ?? "http://127.0.0.1:29371/chzzk/donations",
+      url: webhookUrl,
+      healthUrl: env.MINECRAFT_WEBHOOK_HEALTH_URL ?? `${webhookUrl}/health`,
       sharedSecret: required(env.MINECRAFT_WEBHOOK_SECRET, "MINECRAFT_WEBHOOK_SECRET"),
       maxAttempts: parsePositiveInt(env.WEBHOOK_MAX_ATTEMPTS, 3, "WEBHOOK_MAX_ATTEMPTS"),
-      retryDelayMs: parseNonNegativeInt(env.WEBHOOK_RETRY_DELAY_MS, 500, "WEBHOOK_RETRY_DELAY_MS")
+      retryDelayMs: parseNonNegativeInt(env.WEBHOOK_RETRY_DELAY_MS, 500, "WEBHOOK_RETRY_DELAY_MS"),
+      readinessMaxAttempts: parsePositiveInt(
+        env.WEBHOOK_READY_MAX_ATTEMPTS,
+        30,
+        "WEBHOOK_READY_MAX_ATTEMPTS"
+      ),
+      readinessRetryDelayMs: parseNonNegativeInt(
+        env.WEBHOOK_READY_RETRY_DELAY_MS,
+        1000,
+        "WEBHOOK_READY_RETRY_DELAY_MS"
+      )
     }
   };
 }

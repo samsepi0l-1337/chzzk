@@ -37,8 +37,7 @@ val coverageExcludes = listOf(
     "**/display/SidebarService*",
     "**/effect/**",
     "**/listener/**",
-    "**/state/TargetService*",
-    "**/webhook/DonationWebhookServer*"
+    "**/state/TargetService*"
 )
 
 tasks.jacocoTestReport {

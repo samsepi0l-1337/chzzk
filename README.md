@@ -4,7 +4,7 @@ Paper 1.21.8 plugin and CHZZK OpenAPI bridge for triggering Minecraft effects fr
 
 ## Local Docker
 
-Copy the environment template and fill CHZZK credentials:
+Copy the environment template and fill CHZZK credentials plus a non-empty webhook secret:
 
 ```bash
 cp .env.example .env
@@ -22,7 +22,7 @@ Before starting the live session, store a CHZZK refresh token or OAuth code:
 docker compose -f docker-compose.yml run --rm bridge npm run auth -- --refresh-token "$CHZZK_REFRESH_TOKEN"
 ```
 
-The bridge sends donations to `http://paper:29371/chzzk/donations`. The Paper plugin writes its config from `MINECRAFT_WEBHOOK_SECRET` so both services share the same HMAC secret.
+The bridge sends donations to `http://paper:29371/chzzk/donations`. The Paper plugin writes its config from `MINECRAFT_WEBHOOK_SECRET` so both services share the same HMAC secret. Only `25565` is published to the host; `29371` stays inside the Docker network.
 
 ## Verification
 

@@ -5,12 +5,17 @@ services:
       dockerfile: docker/paper.Dockerfile
     environment:
       EULA: ${EULA:-false}
-      MINECRAFT_WEBHOOK_SECRET: ${MINECRAFT_WEBHOOK_SECRET:-replace-with-shared-secret}
+      MINECRAFT_WEBHOOK_SECRET: ${MINECRAFT_WEBHOOK_SECRET:?MINECRAFT_WEBHOOK_SECRET is required}
       MINECRAFT_WEBHOOK_PORT: 29371
       MINECRAFT_WEBHOOK_PATH: /chzzk/donations
     ports:
       - "25565:25565"
-      - "29371:29371"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:29371/chzzk/donations/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 30s
     volumes:
       - paper-data:/server
 
@@ -23,10 +28,12 @@ services:
         required: false
     environment:
       CHZZK_TOKEN_STORE: /data/.chzzk-tokens.json
-      MINECRAFT_WEBHOOK_SECRET: ${MINECRAFT_WEBHOOK_SECRET:-replace-with-shared-secret}
+      MINECRAFT_WEBHOOK_SECRET: ${MINECRAFT_WEBHOOK_SECRET:?MINECRAFT_WEBHOOK_SECRET is required}
+      MINECRAFT_WEBHOOK_HEALTH_URL: http://paper:29371/chzzk/donations/health
       MINECRAFT_WEBHOOK_URL: http://paper:29371/chzzk/donations
     depends_on:
-      - paper
+      paper:
+        condition: service_healthy
     volumes:
       - bridge-data:/data
 

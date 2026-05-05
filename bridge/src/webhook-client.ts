@@ -3,9 +3,12 @@ import type { MinecraftDonationPayload } from "./donation-parser";
 
 export interface MinecraftWebhookConfig {
   url: string;
+  healthUrl?: string;
   sharedSecret: string;
   maxAttempts?: number;
   retryDelayMs?: number;
+  readinessMaxAttempts?: number;
+  readinessRetryDelayMs?: number;
 }
 
 type Fetcher = (url: string, init: RequestInit) => Promise<Response>;
@@ -56,6 +59,32 @@ export class MinecraftWebhookClient {
 
 export function signBody(body: string, sharedSecret: string): string {
   return `sha256=${createHmac("sha256", sharedSecret).update(body).digest("hex")}`;
+}
+
+export async function waitForWebhookReady(
+  config: MinecraftWebhookConfig,
+  fetcher: Fetcher = fetch
+): Promise<void> {
+  const healthUrl = config.healthUrl ?? `${config.url}/health`;
+  const maxAttempts = Math.max(1, config.readinessMaxAttempts ?? 30);
+  const retryDelayMs = Math.max(0, config.readinessRetryDelayMs ?? 1000);
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      const response = await fetcher(healthUrl, { method: "GET" });
+      if (response.ok) {
+        return;
+      }
+      if (attempt === maxAttempts) {
+        throw new Error(`Minecraft webhook is not ready: ${response.status} ${await response.text()}`);
+      }
+    } catch (error) {
+      if (attempt === maxAttempts) {
+        throw error;
+      }
+    }
+    await delay(retryDelayMs);
+  }
 }
 
 function isTransientStatus(status: number): boolean {

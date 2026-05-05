@@ -1,7 +1,7 @@
 import { loadBridgeConfig } from "./config";
 import { refreshAccessToken } from "./chzzk-auth";
 import { TokenStore } from "./token-store";
-import { MinecraftWebhookClient } from "./webhook-client";
+import { MinecraftWebhookClient, waitForWebhookReady } from "./webhook-client";
 import { startChzzkDonationSession } from "./chzzk-session";
 
 async function main(): Promise<void> {
@@ -20,6 +20,7 @@ async function main(): Promise<void> {
   });
   await tokenStore.save(token);
 
+  await waitForWebhookReady(config.minecraftWebhook);
   const webhookClient = new MinecraftWebhookClient(config.minecraftWebhook);
   await startChzzkDonationSession(
     {

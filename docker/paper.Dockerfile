@@ -28,7 +28,7 @@ COPY docker/paper-entrypoint.sh /usr/local/bin/paper-entrypoint.sh
 
 RUN chmod +x /usr/local/bin/paper-entrypoint.sh
 
-EXPOSE 25565 29371
+EXPOSE 25565
 
 ENTRYPOINT ["paper-entrypoint.sh"]
 CMD ["java", "-Xms1G", "-Xmx1G", "-jar", "/opt/paper.jar", "--nogui"]
