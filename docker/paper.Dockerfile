@@ -1,6 +1,9 @@
 FROM eclipse-temurin:21-jdk AS plugin-build
 
 WORKDIR /workspace
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends unzip \
+    && rm -rf /var/lib/apt/lists/*
 COPY gradlew settings.gradle.kts build.gradle.kts ./
 COPY plugin ./plugin
 RUN ./gradlew --no-daemon :plugin:shadowJar
