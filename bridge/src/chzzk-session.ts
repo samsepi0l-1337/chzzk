@@ -82,6 +82,7 @@ export async function startChzzkDonationSession(
   const sessionUrl = await createUserSessionUrl(config, fetcher);
   const socket = io(sessionUrl, {
     reconnection: true,
+    forceNode: true,
     forceNew: true,
     timeout: 3000,
     transports: ["websocket"]

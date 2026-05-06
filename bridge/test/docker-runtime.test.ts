@@ -16,6 +16,7 @@ const composeFile = join(repoRoot, "docker-compose.yml");
 const entrypoint = join(repoRoot, "docker/paper-entrypoint.sh");
 const envExample = join(repoRoot, ".env.example");
 const bridgeDockerfile = join(repoRoot, "docker/bridge.Dockerfile");
+const dockerignore = join(repoRoot, ".dockerignore");
 
 function extractBlock(source: string, key: string, indent: number) {
   const lines = source.split("\n");
@@ -43,6 +44,50 @@ function listItems(block: string) {
     .split("\n")
     .map((line) => line.trim())
     .filter((line) => line.startsWith("- "));
+}
+
+function listBridgePackageManifestsCopiedByBridgeImage() {
+  return readFileSync(bridgeDockerfile, "utf8")
+    .split("\n")
+    .flatMap((line) => {
+      const match = line.match(/^COPY\s+(.+)\s+\.\/$/);
+      if (!match) {
+        return [];
+      }
+
+      return match[1].split(/\s+/).filter((source) => /^bridge\/package(?:-lock)?\.json$/.test(source));
+    });
+}
+
+function listDockerignoreEntries() {
+  return readFileSync(dockerignore, "utf8")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line !== "" && !line.startsWith("#"));
+}
+
+function readScalar(block: string, key: string) {
+  const line = block
+    .split("\n")
+    .map((sourceLine) => sourceLine.trim())
+    .find((sourceLine) => sourceLine.startsWith(`${key}:`));
+
+  if (!line) {
+    throw new Error(`Missing scalar: ${key}`);
+  }
+
+  return line.slice(`${key}:`.length).trim();
+}
+
+function parseComposeDurationSeconds(value: string) {
+  const match = value.match(/^(\d+)(ms|s|m|h)$/);
+  if (!match) {
+    throw new Error(`Unsupported compose duration: ${value}`);
+  }
+
+  const amount = Number.parseInt(match[1], 10);
+  const unitToSeconds = { h: 3600, m: 60, ms: 0.001, s: 1 } as const;
+  return amount * unitToSeconds[match[2] as keyof typeof unitToSeconds];
 }
 
 describe("Docker runtime configuration", () => {
@@ -87,6 +132,35 @@ describe("Docker runtime configuration", () => {
 
   test("bridge image keeps the production token store on a volume", () => {
     expect(readFileSync(bridgeDockerfile, "utf8")).toContain('VOLUME ["/data"]');
+  });
+
+  test("bridge package manifests copied by Dockerfile are present in build context", () => {
+    const manifestSources = [...new Set(listBridgePackageManifestsCopiedByBridgeImage())];
+    const ignoredEntries = listDockerignoreEntries();
+
+    expect(manifestSources).toEqual(
+      expect.arrayContaining(["bridge/package.json", "bridge/package-lock.json"])
+    );
+    for (const manifestSource of manifestSources) {
+      expect(existsSync(join(repoRoot, manifestSource))).toBe(true);
+      expect(ignoredEntries).not.toContain(manifestSource);
+    }
+  });
+
+  test("paper healthcheck waits long enough for first Paper world generation", () => {
+    const compose = readFileSync(composeFile, "utf8");
+    const paperBlock = extractBlock(compose, "paper", 2);
+    const paperHealthcheckBlock = extractBlock(paperBlock, "healthcheck", 4);
+    const intervalSeconds = parseComposeDurationSeconds(readScalar(paperHealthcheckBlock, "interval"));
+    const retries = Number.parseInt(readScalar(paperHealthcheckBlock, "retries"), 10);
+    const startPeriodSeconds = parseComposeDurationSeconds(
+      readScalar(paperHealthcheckBlock, "start_period")
+    );
+
+    expect(paperHealthcheckBlock).toContain(
+      "curl -fsS http://127.0.0.1:29371/chzzk/donations/health"
+    );
+    expect(startPeriodSeconds + intervalSeconds * retries).toBeGreaterThanOrEqual(480);
   });
 
   test("paper entrypoint fails before writing runtime files when the webhook secret is missing", () => {

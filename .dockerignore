@@ -7,7 +7,6 @@ plugin/build
 bridge/dist
 bridge/coverage
 bridge/node_modules
-bridge/package-lock.json
 node_modules
 coverage
 .env

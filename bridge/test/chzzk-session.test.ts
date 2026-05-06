@@ -165,6 +165,7 @@ describe("startChzzkDonationSession", () => {
     expect(socketInstance).toBe(socket);
     expect(ioMock).toHaveBeenCalledWith("wss://session.test/socket", {
       reconnection: true,
+      forceNode: true,
       forceNew: true,
       timeout: 3000,
       transports: ["websocket"]

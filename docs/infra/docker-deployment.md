@@ -63,7 +63,7 @@ volumes를 삭제하면 world/state/token이 사라진다.
 5. `bridge`는 `depends_on.paper.condition: service_healthy` 조건을 만족한 뒤 실행된다.
 6. bridge 내부에서도 `waitForWebhookReady`가 plugin health endpoint 준비를 재확인한다.
 
-compose의 `service_healthy`는 Docker healthcheck 기준 readiness를 보장한다. bridge의 `waitForWebhookReady`는 시작 순서 밖의 재시작과 네트워크 지연을 위한 애플리케이션 레벨 방어선이다.
+compose의 `service_healthy`는 Docker healthcheck 기준 readiness를 보장한다. Paper는 첫 실행 때 서버 jar remap과 world generation이 오래 걸릴 수 있으므로 healthcheck는 `start_period: 180s`, `retries: 60`, `interval: 5s`로 최대 480초의 startup budget을 둔다. bridge의 `waitForWebhookReady`는 시작 순서 밖의 재시작과 네트워크 지연을 위한 애플리케이션 레벨 방어선이다.
 
 ## EULA
 
