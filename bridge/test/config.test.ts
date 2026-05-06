@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CHZZK_OPENAPI_BASE_URL, loadBridgeConfig } from "../src/config";
+import { CHZZK_OPENAPI_BASE_URL, loadBridgeAuthConfig, loadBridgeConfig } from "../src/config";
 
 const requiredEnv = {
   CHZZK_CLIENT_ID: "client",
@@ -96,5 +96,32 @@ describe("loadBridgeConfig", () => {
       ...requiredEnv,
       WEBHOOK_RETRY_DELAY_MS: ""
     }).minecraftWebhook.retryDelayMs).toBe(500);
+  });
+});
+
+describe("loadBridgeAuthConfig", () => {
+  it("loads auth settings without requiring webhook settings", () => {
+    const config = loadBridgeAuthConfig({
+      CHZZK_CLIENT_ID: "client",
+      CHZZK_CLIENT_SECRET: "secret",
+      CHZZK_OPENAPI_BASE_URL: "https://example.test",
+      CHZZK_TOKEN_STORE: "/tmp/token.json"
+    });
+
+    expect(config).toEqual({
+      chzzk: {
+        clientId: "client",
+        clientSecret: "secret",
+        baseUrl: "https://example.test"
+      },
+      tokenStorePath: "/tmp/token.json"
+    });
+  });
+
+  it("still rejects missing auth settings", () => {
+    expect(() => loadBridgeAuthConfig({})).toThrow(/CHZZK_CLIENT_ID/);
+    expect(() => loadBridgeAuthConfig({
+      CHZZK_CLIENT_ID: "client"
+    })).toThrow(/CHZZK_CLIENT_SECRET/);
   });
 });

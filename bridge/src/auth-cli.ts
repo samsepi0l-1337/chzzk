@@ -1,9 +1,9 @@
 import { exchangeAuthorizationCode, refreshAccessToken } from "./chzzk-auth";
-import { loadBridgeConfig } from "./config";
+import { loadBridgeAuthConfig } from "./config";
 import { TokenStore } from "./token-store";
 
 async function main(): Promise<void> {
-  const config = loadBridgeConfig();
+  const config = loadBridgeAuthConfig();
   const store = new TokenStore(config.tokenStorePath);
   const code = readArg("--code") ?? process.env.CHZZK_AUTH_CODE;
   const state = readArg("--state") ?? process.env.CHZZK_AUTH_STATE;

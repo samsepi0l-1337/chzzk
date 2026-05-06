@@ -22,6 +22,9 @@ Docker compose 기준 파일:
 
 운영에서는 `MINECRAFT_WEBHOOK_SECRET`을 비워두지 않는다.
 
+`npm run auth`로 token을 bootstrap/exchange하는 경로는 webhook을 호출하지 않으므로
+`MINECRAFT_WEBHOOK_SECRET`을 요구하지 않는다. bridge live session 실행은 여전히 이 값을 요구한다.
+
 ## bridge `.env.example`
 
 bridge 단독 실행 기준 파일:

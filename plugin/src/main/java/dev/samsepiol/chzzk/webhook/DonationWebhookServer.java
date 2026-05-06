@@ -14,6 +14,7 @@ import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -30,6 +31,7 @@ public final class DonationWebhookServer {
     private final String path;
     private final int maxBodyBytes;
     private HttpServer server;
+    private ExecutorService executor;
 
     public DonationWebhookServer(
             DonationService donationService,
@@ -63,11 +65,12 @@ public final class DonationWebhookServer {
             server = HttpServer.create(new InetSocketAddress(host, port), 0);
             server.createContext(path, this::handle);
             server.createContext(path + "/health", this::handleHealth);
-            server.setExecutor(Executors.newSingleThreadExecutor(runnable -> {
+            executor = Executors.newSingleThreadExecutor(runnable -> {
                 Thread thread = new Thread(runnable, "chzzk-webhook");
                 thread.setDaemon(true);
                 return thread;
-            }));
+            });
+            server.setExecutor(executor);
             server.start();
             logger.info("CHZZK webhook listening on http://" + host + ":" + port + path);
         } catch (IOException exception) {
@@ -79,6 +82,10 @@ public final class DonationWebhookServer {
         if (server != null) {
             server.stop(0);
             server = null;
+        }
+        if (executor != null) {
+            executor.shutdownNow();
+            executor = null;
         }
     }
 

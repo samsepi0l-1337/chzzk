@@ -40,6 +40,9 @@
 
 진입점: `bridge/src/auth-cli.ts`
 
+Auth CLI는 `loadBridgeAuthConfig`만 사용한다. token bootstrap/exchange는 Minecraft webhook을 열지 않으므로
+`MINECRAFT_WEBHOOK_SECRET` 없이 실행할 수 있다.
+
 지원 입력:
 
 - `--refresh-token <token>` 또는 `CHZZK_REFRESH_TOKEN`

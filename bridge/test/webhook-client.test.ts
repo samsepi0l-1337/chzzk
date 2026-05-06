@@ -55,7 +55,8 @@ describe("MinecraftWebhookClient", () => {
     );
   });
 
-  it("does not retry permanent failures", async () => {
+  it.each([400, 401, 405, 409, 413])("does not retry permanent HTTP %i failures", async (status) => {
+    let calls = 0;
     const client = new MinecraftWebhookClient(
       {
         url: "http://127.0.0.1:29371/chzzk/donations",
@@ -63,10 +64,14 @@ describe("MinecraftWebhookClient", () => {
         maxAttempts: 3,
         retryDelayMs: 0
       },
-      async () => new Response("bad signature", { status: 401 })
+      async () => {
+        calls += 1;
+        return new Response("permanent failure", { status });
+      }
     );
 
-    await expect(client.send(payload())).rejects.toThrow(/401 bad signature/);
+    await expect(client.send(payload())).rejects.toThrow(`${status} permanent failure`);
+    expect(calls).toBe(1);
   });
 
   it("uses safe minimum retry settings and rethrows final fetch errors", async () => {

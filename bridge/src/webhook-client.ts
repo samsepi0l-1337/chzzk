@@ -30,8 +30,9 @@ export class MinecraftWebhookClient {
     const signature = signBody(body, this.config.sharedSecret);
 
     for (let attempt = 1; attempt <= this.maxAttempts; attempt += 1) {
+      let response: Response;
       try {
-        const response = await this.fetcher(this.config.url, {
+        response = await this.fetcher(this.config.url, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -39,17 +40,19 @@ export class MinecraftWebhookClient {
           },
           body
         });
-
-        if (response.ok) {
-          return;
-        }
-        if (!isTransientStatus(response.status) || attempt === this.maxAttempts) {
-          throw new Error(`Minecraft webhook failed: ${response.status} ${await response.text()}`);
-        }
       } catch (error) {
         if (attempt === this.maxAttempts) {
           throw error;
         }
+        await delay(this.retryDelayMs);
+        continue;
+      }
+
+      if (response.ok) {
+        return;
+      }
+      if (!isTransientStatus(response.status) || attempt === this.maxAttempts) {
+        throw new Error(`Minecraft webhook failed: ${response.status} ${await response.text()}`);
       }
 
       await delay(this.retryDelayMs);

@@ -23,6 +23,7 @@ GET <webhook-url>/health
 ```
 
 plugin은 configured path와 `path + "/health"` context를 등록한다.
+plugin reload/disable 시 webhook HTTP server와 background executor를 함께 종료한다. reload 후 이전 webhook executor thread가 남아 있으면 lifecycle 회귀로 본다.
 
 ## Request Headers
 
@@ -97,6 +98,8 @@ status mapping:
 | `DUPLICATE` | `409` |
 | `EFFECT_FAILED` | `500` |
 
+plugin이 Bukkit 메인 스레드에서 효과 실행을 5초 안에 완료하지 못하면 `EFFECT_FAILED`가 반환된다. 이 timeout 경로는 bridge retry 대상인 `500`이며, plugin은 timeout된 예약 작업이 나중에 실행되지 않도록 취소와 실행 게이트를 함께 적용한다.
+
 ## Bridge Retry Policy
 
 `MinecraftWebhookClient`는 다음 조건에서 재시도한다.
@@ -105,6 +108,9 @@ status mapping:
 - `429`
 - `5xx`
 - fetch 예외
+
+영구 HTTP 실패는 첫 응답에서 종료한다. 응답 status를 검사한 뒤 retry 여부를 결정하므로
+`401`, `409`, 기타 영구 `4xx`는 fetch 예외 처리 경로에 흡수되지 않는다.
 
 재시도하지 않는 예:
 

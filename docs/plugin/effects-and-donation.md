@@ -50,6 +50,8 @@
 
 Paper API를 호출하므로 반드시 서버 메인 스레드에서 실행되어야 한다. webhook에서 직접 호출하지 말고 `ChzzkDonationPlugin.syncRunner` 경로를 유지한다.
 
+`syncRunner`는 webhook thread에서 들어온 효과를 Bukkit scheduler에 올리고 최대 5초만 기다린다. timeout 또는 interrupt가 발생하면 예약된 작업을 취소하고 실행 게이트를 닫아, 큐에 남은 작업이 뒤늦게 실행되어 같은 후원 효과가 중복 적용되지 않게 한다.
+
 ## 사망 이벤트와 인벤토리
 
 `TargetDeathListener`는 target 플레이어 사망만 처리한다.

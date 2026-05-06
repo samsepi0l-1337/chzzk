@@ -17,6 +17,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -78,6 +80,18 @@ final class DonationWebhookServerTest {
 
         assertEquals(200, response.statusCode());
         assertEquals("{\"status\":\"ok\"}", response.body());
+    }
+
+    @Test
+    void stopsWebhookExecutorThreads() throws Exception {
+        int port = startServer(new ArrayList<>(), 1024);
+
+        assertEquals(200, get(port, PATH + "/health").statusCode());
+
+        server.stop();
+        server = null;
+
+        assertEventuallyNoWebhookThread();
     }
 
     @Test
@@ -252,6 +266,27 @@ final class DonationWebhookServerTest {
 
     private static URI uri(int port, String path) {
         return URI.create("http://127.0.0.1:" + port + path);
+    }
+
+    private static void assertEventuallyNoWebhookThread() throws InterruptedException {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(2);
+        while (System.nanoTime() < deadline) {
+            if (webhookThreads().isEmpty()) {
+                return;
+            }
+            Thread.sleep(20);
+        }
+        assertEquals(Set.of(), webhookThreads());
+    }
+
+    private static Set<String> webhookThreads() {
+        Set<String> threadNames = new HashSet<>();
+        for (Thread thread : Thread.getAllStackTraces().keySet()) {
+            if (thread.isAlive() && "chzzk-webhook".equals(thread.getName())) {
+                threadNames.add(thread.getName());
+            }
+        }
+        return threadNames;
     }
 
     private record Response(int statusCode, String body) {

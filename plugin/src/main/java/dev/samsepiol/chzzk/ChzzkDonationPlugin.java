@@ -13,8 +13,10 @@ import dev.samsepiol.chzzk.webhook.DonationWebhookServer;
 import dev.samsepiol.chzzk.webhook.HmacVerifier;
 import java.nio.file.Path;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import org.bukkit.Bukkit;
 import org.bukkit.command.PluginCommand;
@@ -111,18 +113,36 @@ public final class ChzzkDonationPlugin extends JavaPlugin {
                 executor.accept(tier);
                 return;
             }
-            try {
-                Bukkit.getScheduler().callSyncMethod(this, () -> {
+            AtomicBoolean effectEnabled = new AtomicBoolean(true);
+            Future<Void> scheduledEffect = Bukkit.getScheduler().callSyncMethod(this, () -> {
+                if (effectEnabled.get()) {
                     executor.accept(tier);
                     sidebarService.update();
-                    return null;
-                }).get(5, TimeUnit.SECONDS);
-            } catch (InterruptedException exception) {
-                Thread.currentThread().interrupt();
-                throw new IllegalStateException("Interrupted while running donation effect", exception);
-            } catch (ExecutionException | TimeoutException exception) {
-                throw new IllegalStateException("Unable to run donation effect", exception);
-            }
+                }
+                return null;
+            });
+            awaitScheduledDonationEffect(scheduledEffect, effectEnabled, 5, TimeUnit.SECONDS);
         };
+    }
+
+    static void awaitScheduledDonationEffect(
+            Future<?> scheduledEffect,
+            AtomicBoolean effectEnabled,
+            long timeout,
+            TimeUnit unit) {
+        try {
+            scheduledEffect.get(timeout, unit);
+        } catch (InterruptedException exception) {
+            effectEnabled.set(false);
+            scheduledEffect.cancel(false);
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Interrupted while running donation effect", exception);
+        } catch (TimeoutException exception) {
+            effectEnabled.set(false);
+            scheduledEffect.cancel(false);
+            throw new IllegalStateException("Unable to run donation effect", exception);
+        } catch (ExecutionException exception) {
+            throw new IllegalStateException("Unable to run donation effect", exception);
+        }
     }
 }

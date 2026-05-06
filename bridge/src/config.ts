@@ -20,15 +20,24 @@ export interface BridgeConfig {
   };
 }
 
-export function loadBridgeConfig(env: NodeJS.ProcessEnv = process.env): BridgeConfig {
-  const webhookUrl = env.MINECRAFT_WEBHOOK_URL ?? "http://127.0.0.1:29371/chzzk/donations";
+export type BridgeAuthConfig = Pick<BridgeConfig, "chzzk" | "tokenStorePath">;
+
+export function loadBridgeAuthConfig(env: NodeJS.ProcessEnv = process.env): BridgeAuthConfig {
   return {
     chzzk: {
       clientId: required(env.CHZZK_CLIENT_ID, "CHZZK_CLIENT_ID"),
       clientSecret: required(env.CHZZK_CLIENT_SECRET, "CHZZK_CLIENT_SECRET"),
       baseUrl: env.CHZZK_OPENAPI_BASE_URL ?? CHZZK_OPENAPI_BASE_URL
     },
-    tokenStorePath: resolve(env.CHZZK_TOKEN_STORE ?? ".chzzk-tokens.json"),
+    tokenStorePath: resolve(env.CHZZK_TOKEN_STORE ?? ".chzzk-tokens.json")
+  };
+}
+
+export function loadBridgeConfig(env: NodeJS.ProcessEnv = process.env): BridgeConfig {
+  const authConfig = loadBridgeAuthConfig(env);
+  const webhookUrl = env.MINECRAFT_WEBHOOK_URL ?? "http://127.0.0.1:29371/chzzk/donations";
+  return {
+    ...authConfig,
     minecraftWebhook: {
       url: webhookUrl,
       healthUrl: env.MINECRAFT_WEBHOOK_HEALTH_URL ?? `${webhookUrl}/health`,
