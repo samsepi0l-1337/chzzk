@@ -9,6 +9,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.OptionalInt;
 import java.util.UUID;
+import java.util.function.Consumer;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabExecutor;
@@ -72,8 +73,7 @@ public final class ChzzkCommand implements TabExecutor {
 
     private void handleTarget(CommandSender sender, String[] args) {
         if (args.length >= 3 && "set".equals(args[1])) {
-            targetService.set(args[2]);
-            sidebarService.update();
+            replaceTarget(args[2], sidebarService::clear, targetService::set, sidebarService::update);
             sender.sendMessage("Target set: " + args[2]);
             return;
         }
@@ -132,5 +132,15 @@ public final class ChzzkCommand implements TabExecutor {
         } catch (NumberFormatException exception) {
             return OptionalInt.empty();
         }
+    }
+
+    static void replaceTarget(
+            String target,
+            Runnable clearCurrentSidebar,
+            Consumer<String> setTarget,
+            Runnable updateSidebar) {
+        clearCurrentSidebar.run();
+        setTarget.accept(target);
+        updateSidebar.run();
     }
 }

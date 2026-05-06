@@ -6,6 +6,7 @@ import dev.samsepiol.chzzk.donation.DonationService;
 import dev.samsepiol.chzzk.donation.DonationTier;
 import dev.samsepiol.chzzk.effect.DonationEffectExecutor;
 import dev.samsepiol.chzzk.listener.TargetDeathListener;
+import dev.samsepiol.chzzk.listener.TargetJoinListener;
 import dev.samsepiol.chzzk.state.DeathCountService;
 import dev.samsepiol.chzzk.state.PluginStateStore;
 import dev.samsepiol.chzzk.state.TargetService;
@@ -88,12 +89,13 @@ public final class ChzzkDonationPlugin extends JavaPlugin {
     }
 
     private void registerListener() {
-        var listener = new TargetDeathListener(
+        var deathListener = new TargetDeathListener(
                 targetService,
                 deathCountService,
                 sidebarService,
                 effectExecutor);
-        Bukkit.getPluginManager().registerEvents(listener, this);
+        Bukkit.getPluginManager().registerEvents(deathListener, this);
+        Bukkit.getPluginManager().registerEvents(new TargetJoinListener(targetService, sidebarService), this);
     }
 
     private void startWebhook(DonationService donationService) {

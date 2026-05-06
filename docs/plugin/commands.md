@@ -14,7 +14,7 @@
 
 | 명령 | 동작 | 주요 서비스 |
 | --- | --- | --- |
-| `/chzzk target set <player|uuid>` | 효과 대상 저장. 온라인 플레이어면 UUID와 현재 이름을 저장하고, 이름만 주면 이름 기준 target으로 저장한다. | `TargetService`, `PluginStateStore`, `SidebarService` |
+| `/chzzk target set <player|uuid>` | 기존 온라인 target sidebar를 먼저 지운 뒤 효과 대상 저장. 온라인 플레이어면 UUID와 현재 이름을 저장하고, 이름만 주면 이름 기준 target으로 저장한다. | `TargetService`, `PluginStateStore`, `SidebarService` |
 | `/chzzk target clear` | target을 지우고 sidebar를 기본 scoreboard로 되돌린다. | `TargetService`, `SidebarService` |
 | `/chzzk target status` | 현재 target과 availability를 표시한다. | `TargetService` |
 | `/chzzk sidebar on` | sidebar 표시를 켜고 즉시 갱신한다. | `SidebarService`, `PluginStateStore` |
@@ -60,6 +60,8 @@
 8. sidebar update.
 
 명령, listener, webhook lifecycle을 수정할 때는 reload 이후 중복 listener 또는 죽은 webhook thread가 남지 않는지 확인한다.
+
+저장된 target이 reload 시점에 offline이면 즉시 sidebar를 렌더링하지 못한다. 이후 해당 target이 join하면 listener가 target을 다시 해석하고 sidebar를 갱신한다.
 
 ## 테스트
 
