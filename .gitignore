@@ -1,9 +1,18 @@
+# Environment and secrets
 .env
+.chzzk-tokens.json*
+
+# Node
 node_modules/
 dist/
 coverage/
+
+# Gradle / Java build output
 build/
 .gradle/
+
+# Local editor and agent state
 .vscode/
-.DS_Store
+.cursor/
 .omx/
+.DS_Store

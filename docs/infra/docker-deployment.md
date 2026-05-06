@@ -1,0 +1,115 @@
+# Docker Deployment
+
+Docker 실행은 루트 `docker-compose.yml`과 `docker/` 파일들이 담당한다.
+
+## Services
+
+### paper
+
+역할:
+
+- Paper 1.21.8 서버 실행.
+- Gradle로 plugin shadow jar를 빌드한 뒤 `/server/plugins/chzzk-donation.jar`로 복사.
+- `paper-entrypoint.sh`에서 EULA와 plugin config를 준비.
+
+주요 파일:
+
+- `docker/paper.Dockerfile`
+- `docker/paper-entrypoint.sh`
+- `plugin/build.gradle.kts`
+
+노출 포트:
+
+- `25565`: Minecraft server.
+- `29371`: plugin webhook.
+
+현재 compose는 webhook port도 host에 publish한다. 내부 bridge만 접근하게 하려면 `29371:29371` publish를 제거하고 Docker network 내부 접근만 사용한다.
+
+### bridge
+
+역할:
+
+- TypeScript bridge를 빌드하고 `node dist/index.js` 실행.
+- CHZZK token store를 `/data/.chzzk-tokens.json`에 저장.
+- `paper` 서비스 webhook으로 donation payload 전송.
+
+주요 파일:
+
+- `docker/bridge.Dockerfile`
+- `bridge/package.json`
+- `bridge/src/index.ts`
+
+Docker 내부 webhook URL:
+
+```text
+http://paper:29371/chzzk/donations
+```
+
+## Volumes
+
+| Volume | Mount | 목적 |
+| --- | --- | --- |
+| `paper-data` | `/server` | Minecraft world, Paper config, plugin state |
+| `bridge-data` | `/data` | CHZZK token store |
+
+volumes를 삭제하면 world/state/token이 사라진다.
+
+## Startup Flow
+
+1. `docker compose up --build`가 `paper`와 `bridge` 이미지를 빌드한다.
+2. `paper` image build stage에서 `:plugin:shadowJar`를 실행한다.
+3. `paper-entrypoint.sh`가 plugin jar와 config를 `/server/plugins` 아래에 준비한다.
+4. `bridge`는 `depends_on`으로 `paper` 컨테이너 시작 뒤 실행된다.
+5. bridge 내부에서 `waitForWebhookReady`가 plugin health endpoint 준비를 기다린다.
+
+`depends_on`은 process readiness를 보장하지 않는다. readiness는 bridge 애플리케이션 레벨에서 처리한다.
+
+## EULA
+
+`.env`의 `EULA=true`는 Minecraft EULA를 수락한 뒤에만 설정한다.
+
+`paper-entrypoint.sh`는 `EULA`가 true가 아니면 `/server/eula.txt`에 `eula=false`를 쓰고 경고를 출력한다.
+
+## Token Bootstrap
+
+라이브 session 전에 refresh token 또는 authorization code로 token store를 만들어야 한다.
+
+refresh token 예:
+
+```bash
+docker compose -f docker-compose.yml run --rm bridge npm run auth -- --refresh-token "$CHZZK_REFRESH_TOKEN"
+```
+
+이 명령은 `bridge-data` volume에 token JSON을 저장한다.
+
+## Build Commands
+
+루트 package scripts:
+
+```bash
+npm test
+npm run build
+npm run docker:build
+npm run docker:up
+```
+
+Gradle:
+
+```bash
+./gradlew check shadowJar
+```
+
+bridge:
+
+```bash
+npm --prefix bridge run coverage
+npm --prefix bridge run build
+```
+
+## 변경 시 체크리스트
+
+- Paper version/build를 바꾸면 `paper-api` dependency와 runtime jar 버전을 맞춘다.
+- plugin jar name을 바꾸면 `paper.Dockerfile`의 `COPY --from=plugin-build` 경로를 확인한다.
+- webhook path/port를 바꾸면 compose, entrypoint, bridge env, plugin config를 같이 수정한다.
+- bridge production dependency를 바꾸면 `bridge.Dockerfile`의 install/build stage가 맞는지 확인한다.
+- host port 공개 정책을 바꾸면 README와 webhook protocol 문서도 수정한다.

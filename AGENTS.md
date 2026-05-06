@@ -26,6 +26,23 @@
 - 파일을 하나하나 생성하지 말고, 명령어를 사용 가능한 것은 사용해서 작업한다.
 - test coverage를 100% 유지한다.
 - test 진행후 전체 파일을 검토하여 누락된 부분이 있는지 확인한다.
+- 코드를 수정한 후에는 documentation을 업데이트한다.
+
+## Documentation
+
+- 수정하거나 작성하기 전에 관련 영역 문서를 먼저 확인한다.
+- 전체 문서 인덱스: `docs/README.md`
+- 전체 구조/서비스 경계: `docs/architecture-overview.md`
+- 후원 이벤트 처리 흐름: `docs/flows/event-flow.md`
+- `plugin/src/main/java/dev/samsepiol/chzzk/command`, `plugin/src/main/resources/plugin.yml`: `docs/plugin/commands.md`
+- `plugin/src/main/java/dev/samsepiol/chzzk/state`, `plugin/src/main/resources/config.yml`, `docker/paper-entrypoint.sh`: `docs/plugin/state-and-config.md`
+- `plugin/src/main/java/dev/samsepiol/chzzk/donation`, `plugin/src/main/java/dev/samsepiol/chzzk/effect`, `plugin/src/main/java/dev/samsepiol/chzzk/listener`: `docs/plugin/effects-and-donation.md`
+- `bridge/src/chzzk-auth.ts`, `bridge/src/chzzk-session.ts`, `bridge/src/auth-cli.ts`, `bridge/src/token-store.ts`: `docs/bridge/chzzk-auth-and-session.md`
+- `bridge/src/webhook-client.ts`, `bridge/src/donation-parser.ts`, `plugin/src/main/java/dev/samsepiol/chzzk/webhook`: `docs/bridge/webhook-protocol.md`
+- `docker-compose.yml`, `docker/bridge.Dockerfile`, `docker/paper.Dockerfile`, `docker/paper-entrypoint.sh`: `docs/infra/docker-deployment.md`
+- `.env.example`, `bridge/.env.example`, `bridge/src/config.ts`, `docker-compose.yml`: `docs/infra/env-reference.md`
+- `plugin/src/test`, `bridge/test`, `plugin/build.gradle.kts`, `bridge/vitest.config.ts`: `docs/testing/coverage-and-runbook.md`
+- `bridge/dist`, `bridge/coverage`, `plugin/build`, `.gradle`, `.omx`, `.cursor`, `.chzzk-tokens.json*`는 산출물/로컬 상태/secret이므로 구현 판단의 기준으로 삼지 않는다.
 
 ## Project
 
