@@ -59,17 +59,15 @@ export async function subscribeDonationEvent(
   sessionKey: string,
   fetcher: Fetcher = fetch
 ): Promise<void> {
-  const response = await fetcher(
-    `${config.baseUrl ?? CHZZK_OPENAPI_BASE_URL}/open/v1/sessions/events/subscribe/donation`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${config.accessToken}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ sessionKey })
+  const url = new URL(`${config.baseUrl ?? CHZZK_OPENAPI_BASE_URL}/open/v1/sessions/events/subscribe/donation`);
+  url.searchParams.set("sessionKey", sessionKey);
+
+  const response = await fetcher(url.toString(), {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${config.accessToken}`
     }
-  );
+  });
 
   if (!response.ok) {
     throw new Error(`CHZZK donation subscribe failed: ${response.status} ${await response.text()}`);

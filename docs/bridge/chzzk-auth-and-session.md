@@ -83,7 +83,7 @@ Session 시작:
 1. `GET /open/v1/sessions/auth`로 session URL을 받는다.
 2. Socket.IO client로 websocket 연결한다.
 3. `SYSTEM connected` 메시지에서 `sessionKey`를 얻는다.
-4. `POST /open/v1/sessions/events/subscribe/donation`으로 donation event를 subscribe한다.
+4. `POST /open/v1/sessions/events/subscribe/donation?sessionKey=<sessionKey>`으로 donation event를 subscribe한다.
 5. `DONATION` 이벤트를 webhook으로 전달한다.
 
 현재 client 옵션:

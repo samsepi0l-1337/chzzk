@@ -95,16 +95,16 @@ describe("createUserSessionUrl", () => {
 
 describe("subscribeDonationEvent", () => {
   it("subscribes the connected session to donation events", async () => {
-    const requests: { url: string; body: unknown }[] = [];
+    const requests: { url: string; body?: BodyInit | null }[] = [];
     await subscribeDonationEvent(sessionConfig, "session-key", async (url, init) => {
-      requests.push({ url, body: JSON.parse(String(init.body)) });
+      requests.push({ url, body: init.body });
       return new Response(null, { status: 204 });
     });
 
     expect(requests).toEqual([
       {
-        url: "https://chzzk.test/open/v1/sessions/events/subscribe/donation",
-        body: { sessionKey: "session-key" }
+        url: "https://chzzk.test/open/v1/sessions/events/subscribe/donation?sessionKey=session-key",
+        body: undefined
       }
     ]);
   });
@@ -123,7 +123,7 @@ describe("subscribeDonationEvent", () => {
     });
 
     expect(requests).toEqual([
-      "https://openapi.chzzk.naver.com/open/v1/sessions/events/subscribe/donation"
+      "https://openapi.chzzk.naver.com/open/v1/sessions/events/subscribe/donation?sessionKey=session-key"
     ]);
   });
 });
@@ -135,7 +135,7 @@ describe("startChzzkDonationSession", () => {
   });
 
   it("connects with Socket.IO options and handles native CHZZK events", async () => {
-    const fetchCalls: { url: string; body?: unknown }[] = [];
+    const fetchCalls: { url: string; body?: BodyInit | null }[] = [];
     const sent: unknown[] = [];
     const socketInstance = await startChzzkDonationSession(
       sessionConfig,
@@ -143,7 +143,7 @@ describe("startChzzkDonationSession", () => {
       async (url, init) => {
         fetchCalls.push({
           url,
-          body: init.body ? JSON.parse(String(init.body)) : undefined
+          body: init.body
         });
         if (init.method === "GET") {
           return okJson({ content: { url: "wss://session.test/socket" } });
@@ -170,8 +170,8 @@ describe("startChzzkDonationSession", () => {
       transports: ["websocket"]
     });
     expect(fetchCalls[1]).toEqual({
-      url: "https://chzzk.test/open/v1/sessions/events/subscribe/donation",
-      body: { sessionKey: "session-1" }
+      url: "https://chzzk.test/open/v1/sessions/events/subscribe/donation?sessionKey=session-1",
+      body: undefined
     });
     expect(sent).toHaveLength(1);
     expect(sent[0]).toMatchObject({
@@ -182,16 +182,16 @@ describe("startChzzkDonationSession", () => {
   });
 
   it("routes typed message envelopes by eventType and type", async () => {
-    const subscribed: unknown[] = [];
+    const subscribed: string[] = [];
     const sent: unknown[] = [];
     await startChzzkDonationSession(
       sessionConfig,
       { send: vi.fn(async (payload) => sent.push(payload)) },
-      async (_url, init) => {
+      async (url, init) => {
         if (init.method === "GET") {
           return okJson({ content: { url: "wss://session.test/socket" } });
         }
-        subscribed.push(JSON.parse(String(init.body)));
+        subscribed.push(url);
         return new Response(null, { status: 204 });
       }
     );
@@ -231,8 +231,8 @@ describe("startChzzkDonationSession", () => {
     await flush();
 
     expect(subscribed).toEqual([
-      { sessionKey: "event-type-key" },
-      { sessionKey: "type-key" }
+      "https://chzzk.test/open/v1/sessions/events/subscribe/donation?sessionKey=event-type-key",
+      "https://chzzk.test/open/v1/sessions/events/subscribe/donation?sessionKey=type-key"
     ]);
     expect(sent).toHaveLength(3);
     expect(sent).toEqual([
