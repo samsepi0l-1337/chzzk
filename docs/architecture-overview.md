@@ -71,7 +71,7 @@ Docker 실행은 루트 `docker-compose.yml`과 `docker/`에 있다.
 - `paper-data`: Minecraft 서버 데이터 볼륨.
 - `bridge-data`: CHZZK token store 볼륨.
 
-현재 compose는 `paper` 서비스의 `25565`와 `29371`을 호스트에 publish한다. README의 설명과 다를 수 있으므로 포트 공개 정책을 바꿀 때는 README와 Docker 문서를 함께 수정한다.
+현재 compose는 `paper` 서비스의 `25565`만 호스트에 publish한다. webhook `29371`은 Docker network 내부에서만 bridge가 접근한다. 포트 공개 정책을 바꿀 때는 README와 Docker 문서를 함께 수정한다.
 
 ## 산출물 취급
 

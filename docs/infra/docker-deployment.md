@@ -21,9 +21,9 @@ Docker 실행은 루트 `docker-compose.yml`과 `docker/` 파일들이 담당한
 노출 포트:
 
 - `25565`: Minecraft server.
-- `29371`: plugin webhook.
+- `29371`: plugin webhook. Docker network 내부에서만 접근한다.
 
-현재 compose는 webhook port도 host에 publish한다. 내부 bridge만 접근하게 하려면 `29371:29371` publish를 제거하고 Docker network 내부 접근만 사용한다.
+현재 compose는 host에 `25565`만 publish한다.
 
 ### bridge
 
@@ -68,7 +68,8 @@ volumes를 삭제하면 world/state/token이 사라진다.
 
 `.env`의 `EULA=true`는 Minecraft EULA를 수락한 뒤에만 설정한다.
 
-`paper-entrypoint.sh`는 `EULA`가 true가 아니면 `/server/eula.txt`에 `eula=false`를 쓰고 경고를 출력한다.
+`paper-entrypoint.sh`는 `EULA=true`이면 `/server/eula.txt`에 `eula=true`를 쓴다. `EULA`가 true가 아니면 `/server/eula.txt`에 `eula=false`를 쓰고 경고를 출력한다.
+테스트에서는 `PAPER_SERVER_DIR`와 `PAPER_PLUGIN_JAR`로 runtime 경로를 임시 디렉터리로 바꾼다.
 
 ## Token Bootstrap
 

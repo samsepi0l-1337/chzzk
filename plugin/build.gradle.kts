@@ -42,6 +42,7 @@ val coverageExcludes = listOf(
 
 tasks.jacocoTestReport {
     dependsOn(tasks.test)
+    executionData(layout.buildDirectory.file("jacoco/test.exec"))
     classDirectories.setFrom(layout.buildDirectory.dir("classes/java/main").map { directory ->
         fileTree(directory.asFile) {
             exclude(coverageExcludes)
@@ -55,6 +56,7 @@ tasks.jacocoTestReport {
 
 tasks.jacocoTestCoverageVerification {
     dependsOn(tasks.test)
+    executionData(layout.buildDirectory.file("jacoco/test.exec"))
     classDirectories.setFrom(layout.buildDirectory.dir("classes/java/main").map { directory ->
         fileTree(directory.asFile) {
             exclude(coverageExcludes)
@@ -64,6 +66,11 @@ tasks.jacocoTestCoverageVerification {
         rule {
             limit {
                 counter = "LINE"
+                value = "COVEREDRATIO"
+                minimum = "1.0".toBigDecimal()
+            }
+            limit {
+                counter = "BRANCH"
                 value = "COVEREDRATIO"
                 minimum = "1.0".toBigDecimal()
             }

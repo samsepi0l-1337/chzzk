@@ -54,7 +54,8 @@ threshold:
 
 설정: `plugin/build.gradle.kts`
 
-`jacocoTestCoverageVerification`은 line covered ratio `1.0`을 요구한다.
+`jacocoTestCoverageVerification`은 line covered ratio `1.0`과 branch covered ratio `1.0`을 요구한다.
+report와 verification은 `plugin/build/jacoco/test.exec`만 사용한다.
 
 현재 coverage 제외:
 
@@ -83,6 +84,7 @@ bridge:
 - `bridge/test/chzzk-session.test.ts`
 - `bridge/test/config.test.ts`
 - `bridge/test/donation-parser.test.ts`
+- `bridge/test/docker-runtime.test.ts`
 - `bridge/test/token-store.test.ts`
 - `bridge/test/webhook-client.test.ts`
 

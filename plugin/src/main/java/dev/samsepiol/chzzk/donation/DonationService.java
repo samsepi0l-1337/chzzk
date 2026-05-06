@@ -72,7 +72,7 @@ public final class DonationService {
     private void remember(String eventId) {
         seenEventIds.add(eventId);
         Iterator<String> iterator = seenEventIds.iterator();
-        while (seenEventIds.size() > maxSeenEventIds && iterator.hasNext()) {
+        while (seenEventIds.size() > maxSeenEventIds) {
             iterator.next();
             iterator.remove();
         }

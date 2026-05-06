@@ -132,8 +132,8 @@ plugin이 Bukkit 메인 스레드에서 target availability 조회 또는 효과
 - shared secret은 bridge와 plugin 양쪽에서 동일해야 한다.
 - secret 기본값 `change-me` 또는 `replace-with-shared-secret`을 운영에 사용하지 않는다.
 - signature 비교는 `MessageDigest.isEqual`을 사용한다.
-- webhook port를 외부에 공개할 때는 네트워크 접근 통제를 별도로 검토한다.
-- 현재 Docker compose는 `29371:29371`을 host에 publish한다. 외부 공개가 불필요하면 compose 설정을 바꾼다.
+- Docker compose에서는 webhook `29371`을 host에 publish하지 않고 Docker network 내부에서만 bridge가 접근한다.
+- webhook port를 외부에 공개해야 한다면 네트워크 접근 통제를 별도로 검토하고 compose, Docker 문서, 보안 문서를 함께 바꾼다.
 
 ## 변경 시 체크리스트
 

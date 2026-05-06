@@ -4,7 +4,7 @@ services:
       context: .
       dockerfile: docker/paper.Dockerfile
     environment:
-      EULA: ${EULA:-false}
+      EULA: ${EULA:?EULA=true is required after accepting the Minecraft EULA}
       MINECRAFT_WEBHOOK_SECRET: ${MINECRAFT_WEBHOOK_SECRET:?MINECRAFT_WEBHOOK_SECRET is required}
       MINECRAFT_WEBHOOK_PORT: 29371
       MINECRAFT_WEBHOOK_PATH: /chzzk/donations
@@ -27,6 +27,9 @@ services:
       - path: .env
         required: false
     environment:
+      CHZZK_CLIENT_ID: ${CHZZK_CLIENT_ID:?CHZZK_CLIENT_ID is required}
+      CHZZK_CLIENT_SECRET: ${CHZZK_CLIENT_SECRET:?CHZZK_CLIENT_SECRET is required}
+      CHZZK_OPENAPI_BASE_URL: ${CHZZK_OPENAPI_BASE_URL:-https://openapi.chzzk.naver.com}
       CHZZK_TOKEN_STORE: /data/.chzzk-tokens.json
       MINECRAFT_WEBHOOK_SECRET: ${MINECRAFT_WEBHOOK_SECRET:?MINECRAFT_WEBHOOK_SECRET is required}
       MINECRAFT_WEBHOOK_HEALTH_URL: http://paper:29371/chzzk/donations/health

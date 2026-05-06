@@ -10,7 +10,7 @@ Docker compose 기준 파일:
 
 | 변수 | 필수 | 기본/예시 | 사용처 |
 | --- | --- | --- | --- |
-| `EULA` | 예 | `false` | `paper-entrypoint.sh`; Minecraft EULA 수락 여부 |
+| `EULA` | 예 | `true` | `paper-entrypoint.sh`; Minecraft EULA 수락 여부 |
 | `CHZZK_CLIENT_ID` | 예 | `your-client-id` | bridge CHZZK auth |
 | `CHZZK_CLIENT_SECRET` | 예 | `your-client-secret` | bridge CHZZK auth |
 | `CHZZK_OPENAPI_BASE_URL` | 아니오 | `https://openapi.chzzk.naver.com` | CHZZK API base URL |
@@ -20,7 +20,7 @@ Docker compose 기준 파일:
 | `WEBHOOK_READY_MAX_ATTEMPTS` | 아니오 | `30` | bridge webhook readiness retry |
 | `WEBHOOK_READY_RETRY_DELAY_MS` | 아니오 | `1000` | readiness retry delay |
 
-운영에서는 `MINECRAFT_WEBHOOK_SECRET`을 비워두지 않는다.
+운영에서는 `MINECRAFT_WEBHOOK_SECRET`을 비워두지 않는다. 루트 Docker compose는 `EULA`, `CHZZK_CLIENT_ID`, `CHZZK_CLIENT_SECRET`, `MINECRAFT_WEBHOOK_SECRET`이 비어 있으면 config 단계에서 실패한다.
 
 `npm run auth`로 token을 bootstrap/exchange하는 경로는 webhook을 호출하지 않으므로
 `MINECRAFT_WEBHOOK_SECRET`을 요구하지 않는다. bridge live session 실행은 여전히 이 값을 요구한다.
