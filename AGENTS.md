@@ -23,7 +23,7 @@
 - 단일 사용 추상화, 미래 확장용 추상화, 의미 없는 wrapper는 만들지 않는다.
 - 파일은 350~400줄 이하로 유지한다.
 - 큰 함수에는 분기를 계속 쌓지 않는다.
-- Functional Programming, SOLID, DRY, Clean Code principles, TDD를 따른다.
+- Functional Programming, SOLID, DRY, KISS, YAGNI, Clean Code principles, TDD를 따른다.
 - 파일을 하나하나 생성하지 말고, 명령어를 사용 가능한 것은 사용해서 작업한다.
 - test coverage를 100% 유지한다.
 - test 진행후 전체 파일을 검토하여 누락된 부분이 있는지 확인한다.
