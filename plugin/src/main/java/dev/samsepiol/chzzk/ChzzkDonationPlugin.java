@@ -4,6 +4,7 @@ import dev.samsepiol.chzzk.command.ChzzkCommand;
 import dev.samsepiol.chzzk.display.SidebarService;
 import dev.samsepiol.chzzk.donation.DonationService;
 import dev.samsepiol.chzzk.donation.DonationTier;
+import dev.samsepiol.chzzk.donation.TargetAvailability;
 import dev.samsepiol.chzzk.effect.DonationEffectExecutor;
 import dev.samsepiol.chzzk.listener.TargetDeathListener;
 import dev.samsepiol.chzzk.listener.TargetJoinListener;
@@ -63,7 +64,7 @@ public final class ChzzkDonationPlugin extends JavaPlugin {
 
         DonationService donationService = new DonationService(
                 stateStore.recentEventIds(),
-                targetService::availability,
+                this::syncAvailability,
                 syncRunner(effectExecutor),
                 stateStore::save);
 
@@ -123,28 +124,50 @@ public final class ChzzkDonationPlugin extends JavaPlugin {
                 }
                 return null;
             });
-            awaitScheduledDonationEffect(scheduledEffect, effectEnabled, 5, TimeUnit.SECONDS);
+            awaitScheduledBukkitCall(
+                    scheduledEffect,
+                    effectEnabled,
+                    5,
+                    TimeUnit.SECONDS,
+                    "running donation effect");
         };
     }
 
-    static void awaitScheduledDonationEffect(
-            Future<?> scheduledEffect,
-            AtomicBoolean effectEnabled,
+    private TargetAvailability syncAvailability() {
+        if (Bukkit.isPrimaryThread()) {
+            return targetService.availability();
+        }
+        AtomicBoolean availabilityEnabled = new AtomicBoolean(true);
+        Future<TargetAvailability> scheduledAvailability =
+                Bukkit.getScheduler().callSyncMethod(this, () ->
+                        availabilityEnabled.get() ? targetService.availability() : TargetAvailability.OFFLINE);
+        return awaitScheduledBukkitCall(
+                scheduledAvailability,
+                availabilityEnabled,
+                5,
+                TimeUnit.SECONDS,
+                "checking target availability");
+    }
+
+    static <T> T awaitScheduledBukkitCall(
+            Future<T> scheduledCall,
+            AtomicBoolean callEnabled,
             long timeout,
-            TimeUnit unit) {
+            TimeUnit unit,
+            String actionName) {
         try {
-            scheduledEffect.get(timeout, unit);
+            return scheduledCall.get(timeout, unit);
         } catch (InterruptedException exception) {
-            effectEnabled.set(false);
-            scheduledEffect.cancel(false);
+            callEnabled.set(false);
+            scheduledCall.cancel(false);
             Thread.currentThread().interrupt();
-            throw new IllegalStateException("Interrupted while running donation effect", exception);
+            throw new IllegalStateException("Interrupted while " + actionName, exception);
         } catch (TimeoutException exception) {
-            effectEnabled.set(false);
-            scheduledEffect.cancel(false);
-            throw new IllegalStateException("Unable to run donation effect", exception);
+            callEnabled.set(false);
+            scheduledCall.cancel(false);
+            throw new IllegalStateException("Unable to finish " + actionName, exception);
         } catch (ExecutionException exception) {
-            throw new IllegalStateException("Unable to run donation effect", exception);
+            throw new IllegalStateException("Unable to finish " + actionName, exception);
         }
     }
 }

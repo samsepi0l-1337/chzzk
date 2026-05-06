@@ -2,6 +2,7 @@ package dev.samsepiol.chzzk;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
@@ -11,24 +12,75 @@ import org.junit.jupiter.api.Test;
 
 final class ChzzkDonationPluginTest {
     @Test
-    void disablesQueuedDonationEffectAfterSyncTimeout() {
-        AtomicBoolean effectEnabled = new AtomicBoolean(true);
-        AtomicInteger effects = new AtomicInteger();
-        FutureTask<Void> queuedEffect = new FutureTask<>(() -> {
-            if (effectEnabled.get()) {
-                effects.incrementAndGet();
+    void returnsScheduledBukkitCallValue() {
+        AtomicBoolean callEnabled = new AtomicBoolean(true);
+        FutureTask<String> queuedCall = new FutureTask<>(() -> {
+            if (!callEnabled.get()) {
+                return "disabled";
+            }
+            return "available";
+        });
+        queuedCall.run();
+
+        String result = ChzzkDonationPlugin.awaitScheduledBukkitCall(
+                queuedCall,
+                callEnabled,
+                10,
+                TimeUnit.MILLISECONDS,
+                "checking target availability");
+
+        assertEquals("available", result);
+    }
+
+    @Test
+    void disablesQueuedScheduledBukkitCallAfterTimeout() {
+        AtomicBoolean callEnabled = new AtomicBoolean(true);
+        AtomicInteger calls = new AtomicInteger();
+        FutureTask<Void> queuedCall = new FutureTask<>(() -> {
+            if (callEnabled.get()) {
+                calls.incrementAndGet();
             }
             return null;
         });
 
         assertThrows(IllegalStateException.class, () ->
-                ChzzkDonationPlugin.awaitScheduledDonationEffect(
-                        queuedEffect,
-                        effectEnabled,
+                ChzzkDonationPlugin.awaitScheduledBukkitCall(
+                        queuedCall,
+                        callEnabled,
                         10,
-                        TimeUnit.MILLISECONDS));
-        queuedEffect.run();
+                        TimeUnit.MILLISECONDS,
+                        "checking target availability"));
+        queuedCall.run();
 
-        assertEquals(0, effects.get());
+        assertEquals(0, calls.get());
+    }
+
+    @Test
+    void preservesInterruptAndDisablesQueuedScheduledBukkitCall() {
+        AtomicBoolean callEnabled = new AtomicBoolean(true);
+        AtomicInteger calls = new AtomicInteger();
+        FutureTask<Void> queuedCall = new FutureTask<>(() -> {
+            if (callEnabled.get()) {
+                calls.incrementAndGet();
+            }
+            return null;
+        });
+
+        Thread.currentThread().interrupt();
+        try {
+            assertThrows(IllegalStateException.class, () ->
+                    ChzzkDonationPlugin.awaitScheduledBukkitCall(
+                            queuedCall,
+                            callEnabled,
+                            1,
+                            TimeUnit.SECONDS,
+                            "checking target availability"));
+            assertTrue(Thread.currentThread().isInterrupted());
+            queuedCall.run();
+
+            assertEquals(0, calls.get());
+        } finally {
+            Thread.interrupted();
+        }
     }
 }

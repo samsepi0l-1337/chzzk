@@ -98,7 +98,7 @@ status mapping:
 | `DUPLICATE` | `409` |
 | `EFFECT_FAILED` | `500` |
 
-plugin이 Bukkit 메인 스레드에서 효과 실행을 5초 안에 완료하지 못하면 `EFFECT_FAILED`가 반환된다. 이 timeout 경로는 bridge retry 대상인 `500`이며, plugin은 timeout된 예약 작업이 나중에 실행되지 않도록 취소와 실행 게이트를 함께 적용한다.
+plugin이 Bukkit 메인 스레드에서 target availability 조회 또는 효과 실행을 5초 안에 완료하지 못하면 `EFFECT_FAILED`가 반환된다. 이 timeout 경로는 bridge retry 대상인 `500`이며, plugin은 timeout된 예약 작업이 나중에 Bukkit API를 호출하거나 효과를 실행하지 않도록 취소와 실행 게이트를 함께 적용한다.
 
 ## Bridge Retry Policy
 
