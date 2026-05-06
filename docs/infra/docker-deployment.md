@@ -59,21 +59,30 @@ volumes를 삭제하면 world/state/token이 사라진다.
 1. `docker compose up --build`가 `paper`와 `bridge` 이미지를 빌드한다.
 2. `paper` image build stage에서 `:plugin:shadowJar`를 실행한다.
 3. `paper-entrypoint.sh`가 plugin jar와 config를 `/server/plugins` 아래에 준비한다.
-4. `bridge`는 `depends_on`으로 `paper` 컨테이너 시작 뒤 실행된다.
-5. bridge 내부에서 `waitForWebhookReady`가 plugin health endpoint 준비를 기다린다.
+4. `paper` healthcheck가 `http://127.0.0.1:29371/chzzk/donations/health` 성공을 확인한다.
+5. `bridge`는 `depends_on.paper.condition: service_healthy` 조건을 만족한 뒤 실행된다.
+6. bridge 내부에서도 `waitForWebhookReady`가 plugin health endpoint 준비를 재확인한다.
 
-`depends_on`은 process readiness를 보장하지 않는다. readiness는 bridge 애플리케이션 레벨에서 처리한다.
+compose의 `service_healthy`는 Docker healthcheck 기준 readiness를 보장한다. bridge의 `waitForWebhookReady`는 시작 순서 밖의 재시작과 네트워크 지연을 위한 애플리케이션 레벨 방어선이다.
 
 ## EULA
 
 `.env`의 `EULA=true`는 Minecraft EULA를 수락한 뒤에만 설정한다.
 
-`paper-entrypoint.sh`는 `EULA=true`이면 `/server/eula.txt`에 `eula=true`를 쓴다. `EULA`가 true가 아니면 `/server/eula.txt`에 `eula=false`를 쓰고 경고를 출력한다.
+`paper-entrypoint.sh`는 `EULA=true` 또는 `EULA=TRUE`이면 `/server/eula.txt`에 `eula=true`를 쓴다. `EULA`가 true/TRUE가 아니면 `/server/eula.txt`에 `eula=false`를 쓰고 plugin jar 복사와 plugin config 생성 전에 실패한다.
 테스트에서는 `PAPER_SERVER_DIR`와 `PAPER_PLUGIN_JAR`로 runtime 경로를 임시 디렉터리로 바꾼다.
 
 ## Token Bootstrap
 
-라이브 session 전에 refresh token 또는 authorization code로 token store를 만들어야 한다.
+라이브 session 전에 token store가 없으면 bridge는 `CHZZK_REFRESH_TOKEN`으로 `/data/.chzzk-tokens.json`을 생성한 뒤 같은 시작 흐름에서 session을 시작한다. 생성된 token store는 `bridge-data` volume에 남고 이후 실행에서 재사용된다.
+
+`.env`에 `CHZZK_REFRESH_TOKEN`을 넣은 첫 실행 예:
+
+```bash
+docker compose up --build
+```
+
+수동 bootstrap도 가능하다.
 
 refresh token 예:
 

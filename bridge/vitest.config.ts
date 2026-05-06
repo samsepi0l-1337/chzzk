@@ -9,6 +9,7 @@ export default defineConfig({
         "src/chzzk-session.ts",
         "src/config.ts",
         "src/donation-parser.ts",
+        "src/index.ts",
         "src/token-store.ts",
         "src/webhook-client.ts"
       ],

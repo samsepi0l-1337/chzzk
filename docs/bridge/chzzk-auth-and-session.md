@@ -8,9 +8,9 @@
 
 1. `loadBridgeConfig`로 환경 변수 로드.
 2. `TokenStore`에서 저장 토큰 로드.
-3. 저장 토큰이 없으면 실패하고 auth CLI 실행을 요구한다.
-4. `refreshAccessToken`으로 access token 갱신.
-5. 갱신 토큰 저장.
+3. 저장 토큰이 없고 `CHZZK_REFRESH_TOKEN`도 없으면 실패하고 auth CLI 실행을 요구한다.
+4. 저장 토큰의 refresh token 또는 `CHZZK_REFRESH_TOKEN`으로 `refreshAccessToken`을 호출한다.
+5. 갱신 토큰을 token store에 저장한다. Docker에서는 `/data/.chzzk-tokens.json`에 생성되고 이후 실행에서 재사용된다.
 6. plugin webhook health ready 대기.
 7. `MinecraftWebhookClient` 생성.
 8. `startChzzkDonationSession`으로 CHZZK Session socket 시작.
@@ -56,6 +56,8 @@ Docker에서 refresh token을 저장하는 예:
 ```bash
 docker compose -f docker-compose.yml run --rm bridge npm run auth -- --refresh-token "$CHZZK_REFRESH_TOKEN"
 ```
+
+Docker 첫 live session에서는 `.env`의 `CHZZK_REFRESH_TOKEN`만으로도 bridge가 token store를 만든 뒤 session을 시작한다. refresh token은 secret이므로 token store 생성 후 운영 환경에서 제거할 수 있다.
 
 ## CHZZK token API
 

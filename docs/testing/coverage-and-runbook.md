@@ -38,6 +38,7 @@ coverage 대상:
 - `src/chzzk-session.ts`
 - `src/config.ts`
 - `src/donation-parser.ts`
+- `src/index.ts`
 - `src/token-store.ts`
 - `src/webhook-client.ts`
 
@@ -85,6 +86,7 @@ bridge:
 - `bridge/test/config.test.ts`
 - `bridge/test/donation-parser.test.ts`
 - `bridge/test/docker-runtime.test.ts`
+- `bridge/test/index.test.ts`
 - `bridge/test/token-store.test.ts`
 - `bridge/test/webhook-client.test.ts`
 
@@ -95,6 +97,7 @@ bridge:
 | `bridge/src/config.ts` | `npm --prefix bridge run coverage`, `npm --prefix bridge run build` |
 | `bridge/src/chzzk-auth.ts` | `npm --prefix bridge run coverage`, `npm --prefix bridge run build` |
 | `bridge/src/chzzk-session.ts` | `npm --prefix bridge run coverage`, `npm --prefix bridge run build` |
+| `bridge/src/index.ts` | `npm --prefix bridge run coverage`, `npm --prefix bridge run build` |
 | `bridge/src/webhook-client.ts` 또는 `donation-parser.ts` | bridge coverage/build + plugin webhook/donation 관련 Gradle tests |
 | `plugin/src/main/java/.../donation` | `./gradlew check shadowJar` |
 | `plugin/src/main/java/.../webhook` | `./gradlew check shadowJar` |
@@ -108,12 +111,15 @@ bridge:
 수동 절차:
 
 1. `.env`에 CHZZK credential, webhook secret, `EULA=true` 설정.
-2. `docker compose -f docker-compose.yml up --build`.
-3. refresh token 또는 OAuth code로 bridge token store 생성.
-4. Minecraft 서버 접속.
-5. `/chzzk target set <player>` 실행.
-6. `/chzzk simulate <amount>`로 8개 tier 확인.
-7. 실제 CHZZK donation session smoke test.
+2. token store bootstrap 방식을 선택한다.
+   - A: `.env`에 `CHZZK_REFRESH_TOKEN`을 넣어두면 `docker compose up --build` 첫 bridge startup이 `/data/.chzzk-tokens.json`을 생성한다.
+   - B: `.env`에 token을 남기지 않으려면 `docker compose -f docker-compose.yml run --rm bridge npm run auth -- --refresh-token "$CHZZK_REFRESH_TOKEN"`로 `bridge-data` volume token store를 먼저 만든다.
+3. `docker compose -f docker-compose.yml up --build`.
+4. 선택한 bootstrap 방식에 따라 bridge startup 로그 또는 Docker run auth 성공 로그를 확인한다.
+5. Minecraft 서버 접속.
+6. `/chzzk target set <player>` 실행.
+7. `/chzzk simulate <amount>`로 8개 tier 확인.
+8. 실제 CHZZK donation session smoke test.
 
 ## 실패 시 우선순위
 

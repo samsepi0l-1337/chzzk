@@ -32,7 +32,8 @@ config key를 추가하거나 의미를 바꾸면 `config.yml`, Docker entrypoin
 
 ## Docker에서 생성되는 config
 
-`docker/paper-entrypoint.sh`는 `MINECRAFT_WEBHOOK_SECRET`이 있으면 `/server/plugins/ChzzkDonation/config.yml`을 생성한다.
+`docker/paper-entrypoint.sh`는 `EULA=true` 또는 `EULA=TRUE`이고 `MINECRAFT_WEBHOOK_SECRET`이 있으면 `/server/plugins/ChzzkDonation/config.yml`을 생성한다.
+`EULA`가 true/TRUE가 아니면 `/server/eula.txt`에 `eula=false`를 쓰고 plugin jar 복사와 plugin config 생성 전에 실패한다.
 
 Docker config는 다음 값을 runtime 환경 변수로 받는다.
 

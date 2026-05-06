@@ -13,6 +13,7 @@ Docker compose 기준 파일:
 | `EULA` | 예 | `true` | `paper-entrypoint.sh`; Minecraft EULA 수락 여부 |
 | `CHZZK_CLIENT_ID` | 예 | `your-client-id` | bridge CHZZK auth |
 | `CHZZK_CLIENT_SECRET` | 예 | `your-client-secret` | bridge CHZZK auth |
+| `CHZZK_REFRESH_TOKEN` | 첫 token store가 없으면 예 | empty | bridge 첫 live session token bootstrap |
 | `CHZZK_OPENAPI_BASE_URL` | 아니오 | `https://openapi.chzzk.naver.com` | CHZZK API base URL |
 | `MINECRAFT_WEBHOOK_SECRET` | 예 | empty | bridge signature와 plugin HMAC 검증 |
 | `WEBHOOK_MAX_ATTEMPTS` | 아니오 | `3` | bridge webhook send retry |
@@ -24,6 +25,7 @@ Docker compose 기준 파일:
 
 `npm run auth`로 token을 bootstrap/exchange하는 경로는 webhook을 호출하지 않으므로
 `MINECRAFT_WEBHOOK_SECRET`을 요구하지 않는다. bridge live session 실행은 여전히 이 값을 요구한다.
+Docker 첫 live session에서 `/data/.chzzk-tokens.json`이 없고 `CHZZK_REFRESH_TOKEN`이 있으면 bridge가 token store를 생성하고 이후 실행에서 재사용한다.
 
 ## bridge `.env.example`
 
@@ -36,6 +38,7 @@ bridge 단독 실행 기준 파일:
 | 변수 | 기본/예시 | 의미 |
 | --- | --- | --- |
 | `CHZZK_TOKEN_STORE` | `.chzzk-tokens.json` | token JSON 저장 경로 |
+| `CHZZK_REFRESH_TOKEN` | empty | token store가 없을 때 첫 live session bootstrap에 사용할 refresh token |
 | `MINECRAFT_WEBHOOK_URL` | `http://127.0.0.1:29371/chzzk/donations` | plugin webhook URL |
 
 루트 Docker 실행에서는 compose가 `CHZZK_TOKEN_STORE=/data/.chzzk-tokens.json`와 `MINECRAFT_WEBHOOK_URL=http://paper:29371/chzzk/donations`를 지정한다.

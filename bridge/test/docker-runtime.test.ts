@@ -17,67 +17,68 @@ const entrypoint = join(repoRoot, "docker/paper-entrypoint.sh");
 const envExample = join(repoRoot, ".env.example");
 const bridgeDockerfile = join(repoRoot, "docker/bridge.Dockerfile");
 
-function composeConfig(env: NodeJS.ProcessEnv = {}) {
-  return spawnSync("docker", ["compose", "-f", composeFile, "config", "--format", "json"], {
-    cwd: repoRoot,
-    env: {
-      PATH: process.env.PATH,
-      HOME: process.env.HOME,
-      ...env
-    },
-    encoding: "utf8"
-  });
+function extractBlock(source: string, key: string, indent: number) {
+  const lines = source.split("\n");
+  const header = `${" ".repeat(indent)}${key}:`;
+  const start = lines.findIndex((line) => line === header);
+
+  if (start === -1) {
+    throw new Error(`Missing block: ${header}`);
+  }
+
+  const blockLines = [];
+  for (const line of lines.slice(start + 1)) {
+    const leadingSpaces = line.match(/^ */)?.[0].length ?? 0;
+    if (line.trim() !== "" && leadingSpaces <= indent) {
+      break;
+    }
+    blockLines.push(line);
+  }
+
+  return blockLines.join("\n");
+}
+
+function listItems(block: string) {
+  return block
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith("- "));
 }
 
 describe("Docker runtime configuration", () => {
-  test("requires the Minecraft webhook secret during compose config", () => {
-    const result = composeConfig({
-      EULA: "true",
-      CHZZK_CLIENT_ID: "test-client-id",
-      CHZZK_CLIENT_SECRET: "test-client-secret",
-      MINECRAFT_WEBHOOK_SECRET: ""
-    });
+  test("requires the Minecraft webhook secret through compose interpolation", () => {
+    const compose = readFileSync(composeFile, "utf8");
 
-    expect(result.status).not.toBe(0);
-    expect(result.stderr).toContain("MINECRAFT_WEBHOOK_SECRET is required");
+    expect(compose).toContain(
+      "MINECRAFT_WEBHOOK_SECRET: ${MINECRAFT_WEBHOOK_SECRET:?MINECRAFT_WEBHOOK_SECRET is required}"
+    );
   });
 
-  test("requires CHZZK credentials during compose config", () => {
-    const result = composeConfig({
-      EULA: "true",
-      CHZZK_CLIENT_ID: "",
-      CHZZK_CLIENT_SECRET: "",
-      MINECRAFT_WEBHOOK_SECRET: "test-secret"
-    });
+  test("requires CHZZK credentials through compose interpolation", () => {
+    const compose = readFileSync(composeFile, "utf8");
 
-    expect(result.status).not.toBe(0);
-    expect(result.stderr).toContain("CHZZK_CLIENT_ID is required");
+    expect(compose).toContain("CHZZK_CLIENT_ID: ${CHZZK_CLIENT_ID:?CHZZK_CLIENT_ID is required}");
+    expect(compose).toContain(
+      "CHZZK_CLIENT_SECRET: ${CHZZK_CLIENT_SECRET:?CHZZK_CLIENT_SECRET is required}"
+    );
   });
 
-  test("renders compose config with only Minecraft published to the host", () => {
-    const result = composeConfig({
-      EULA: "true",
-      CHZZK_CLIENT_ID: "test-client-id",
-      CHZZK_CLIENT_SECRET: "test-client-secret",
-      MINECRAFT_WEBHOOK_SECRET: "test-secret"
-    });
+  test("keeps only Minecraft published to the host and bridge traffic internal", () => {
+    const compose = readFileSync(composeFile, "utf8");
+    const paperBlock = extractBlock(compose, "paper", 2);
+    const paperPortsBlock = extractBlock(paperBlock, "ports", 4);
+    const bridgeBlock = extractBlock(compose, "bridge", 2);
+    const bridgeDependsOnBlock = extractBlock(bridgeBlock, "depends_on", 4);
+    const bridgeDependsOnPaperBlock = extractBlock(bridgeDependsOnBlock, "paper", 6);
 
-    expect(result.status).toBe(0);
-    const config = JSON.parse(result.stdout);
-
-    expect(config.services.paper.ports).toEqual([
-      expect.objectContaining({ published: "25565", target: 25565 })
-    ]);
-    expect(JSON.stringify(config.services.paper.ports)).not.toContain("29371");
-    expect(config.services.bridge.environment.MINECRAFT_WEBHOOK_URL).toBe(
-      "http://paper:29371/chzzk/donations"
+    expect(listItems(paperPortsBlock)).toEqual(['- "25565:25565"']);
+    expect(paperPortsBlock).not.toMatch(/29371\s*:\s*29371/);
+    expect(paperPortsBlock).not.toMatch(/published:\s*["']?29371["']?/);
+    expect(compose).toContain("MINECRAFT_WEBHOOK_URL: http://paper:29371/chzzk/donations");
+    expect(compose).toContain(
+      "MINECRAFT_WEBHOOK_HEALTH_URL: http://paper:29371/chzzk/donations/health"
     );
-    expect(config.services.bridge.environment.MINECRAFT_WEBHOOK_HEALTH_URL).toBe(
-      "http://paper:29371/chzzk/donations/health"
-    );
-    expect(config.services.bridge.environment.CHZZK_CLIENT_ID).toBe("test-client-id");
-    expect(config.services.bridge.environment.CHZZK_CLIENT_SECRET).toBe("test-client-secret");
-    expect(config.services.bridge.depends_on.paper.condition).toBe("service_healthy");
+    expect(bridgeDependsOnPaperBlock).toContain("condition: service_healthy");
   });
 
   test("documents EULA=true as the Docker default template value", () => {
@@ -111,6 +112,36 @@ describe("Docker runtime configuration", () => {
       expect(result.status).not.toBe(0);
       expect(result.stderr).toContain("MINECRAFT_WEBHOOK_SECRET is required");
       expect(existsSync(join(serverDir, "eula.txt"))).toBe(false);
+      expect(existsSync(join(serverDir, "plugins/chzzk-donation.jar"))).toBe(false);
+      expect(existsSync(join(serverDir, "plugins/ChzzkDonation/config.yml"))).toBe(false);
+    } finally {
+      rmSync(tempDir, { force: true, recursive: true });
+    }
+  });
+
+  test("paper entrypoint rejects non-true EULA before writing plugin runtime files", () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "chzzk-paper-entrypoint-"));
+    const serverDir = join(tempDir, "server");
+    const pluginJar = join(tempDir, "chzzk-donation.jar");
+    mkdirSync(serverDir);
+    writeFileSync(pluginJar, "fake jar");
+
+    try {
+      const result = spawnSync("sh", [entrypoint, "true"], {
+        cwd: repoRoot,
+        env: {
+          PATH: process.env.PATH,
+          EULA: "false",
+          MINECRAFT_WEBHOOK_SECRET: "entrypoint-secret",
+          PAPER_SERVER_DIR: serverDir,
+          PAPER_PLUGIN_JAR: pluginJar
+        },
+        encoding: "utf8"
+      });
+
+      expect(result.status).not.toBe(0);
+      expect(result.stderr).toContain("Set EULA=true after accepting the Minecraft EULA");
+      expect(readFileSync(join(serverDir, "eula.txt"), "utf8")).toBe("eula=false\n");
       expect(existsSync(join(serverDir, "plugins/chzzk-donation.jar"))).toBe(false);
       expect(existsSync(join(serverDir, "plugins/ChzzkDonation/config.yml"))).toBe(false);
     } finally {
