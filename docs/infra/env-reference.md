@@ -48,7 +48,7 @@ bridge 단독 실행 기준 파일:
 plugin config:
 
 - `webhook.shared-secret`은 bridge의 `MINECRAFT_WEBHOOK_SECRET`과 같아야 한다.
-- Docker에서는 `paper-entrypoint.sh`가 `MINECRAFT_WEBHOOK_SECRET`로 plugin config를 생성한다.
+- Docker에서는 `paper-entrypoint.sh`가 `MINECRAFT_WEBHOOK_SECRET`로 plugin config를 생성한다. 이 값은 YAML block scalar로 기록되어 큰따옴표와 개행이 포함된 secret도 config 구조를 깨지 않는다.
 - 로컬 Paper 직접 실행에서는 `plugin/src/main/resources/config.yml`이 기본값이므로 서버의 실제 `plugins/ChzzkDonation/config.yml`을 직접 수정해야 한다.
 
 ## 숫자 변수 검증

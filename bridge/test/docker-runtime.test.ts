@@ -244,10 +244,37 @@ describe("Docker runtime configuration", () => {
 
       expect(readFileSync(join(serverDir, "eula.txt"), "utf8")).toBe("eula=true\n");
       expect(readFileSync(join(serverDir, "plugins/ChzzkDonation/config.yml"), "utf8")).toContain(
-        'shared-secret: "entrypoint-secret"'
+        "shared-secret: |-\n    entrypoint-secret"
       );
     } finally {
       rmSync(tempDir, { force: true, recursive: true });
     }
-  });
+  }, 10_000);
+
+  test("paper entrypoint writes webhook secrets with quotes and newlines as YAML block content", () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "chzzk-paper-entrypoint-"));
+    const serverDir = join(tempDir, "server");
+    const pluginJar = join(tempDir, "chzzk-donation.jar");
+    mkdirSync(serverDir);
+    writeFileSync(pluginJar, "fake jar");
+
+    try {
+      execFileSync("sh", [entrypoint, "true"], {
+        cwd: repoRoot,
+        env: {
+          ...process.env,
+          EULA: "true",
+          MINECRAFT_WEBHOOK_SECRET: 'first "quoted" line\nsecond line',
+          PAPER_SERVER_DIR: serverDir,
+          PAPER_PLUGIN_JAR: pluginJar
+        }
+      });
+
+      expect(readFileSync(join(serverDir, "plugins/ChzzkDonation/config.yml"), "utf8")).toContain(
+        '  shared-secret: |-\n    first "quoted" line\n    second line\n'
+      );
+    } finally {
+      rmSync(tempDir, { force: true, recursive: true });
+    }
+  }, 10_000);
 });

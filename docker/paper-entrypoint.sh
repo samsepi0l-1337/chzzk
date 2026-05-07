@@ -16,17 +16,21 @@ fi
 mkdir -p "$server_dir/plugins/ChzzkDonation"
 cp "$plugin_jar" "$server_dir/plugins/chzzk-donation.jar"
 printf 'eula=true\n' > "$server_dir/eula.txt"
+secret_file="$(mktemp)"
+printf '%s' "$MINECRAFT_WEBHOOK_SECRET" > "$secret_file"
 
 cat > "$server_dir/plugins/ChzzkDonation/config.yml" <<EOF
 webhook:
   host: "0.0.0.0"
   port: ${MINECRAFT_WEBHOOK_PORT:-29371}
   path: "${MINECRAFT_WEBHOOK_PATH:-/chzzk/donations}"
-  shared-secret: "${MINECRAFT_WEBHOOK_SECRET}"
+  shared-secret: |-
+$(sed 's/^/    /' "$secret_file")
 sidebar:
   enabled: true
 teleport:
   radius: 64
 EOF
+rm -f "$secret_file"
 
 exec "$@"

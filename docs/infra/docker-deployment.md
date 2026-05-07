@@ -71,6 +71,7 @@ compose의 `service_healthy`는 Docker healthcheck 기준 readiness를 보장한
 
 `paper-entrypoint.sh`는 `EULA=true` 또는 `EULA=TRUE`이면 `/server/eula.txt`에 `eula=true`를 쓴다. `EULA`가 true/TRUE가 아니면 `/server/eula.txt`에 `eula=false`를 쓰고 plugin jar 복사와 plugin config 생성 전에 실패한다.
 테스트에서는 `PAPER_SERVER_DIR`와 `PAPER_PLUGIN_JAR`로 runtime 경로를 임시 디렉터리로 바꾼다.
+`MINECRAFT_WEBHOOK_SECRET`은 plugin config에 YAML block scalar로 기록하므로 큰따옴표와 개행이 포함되어도 YAML 구조를 깨지 않는다.
 
 ## Token Bootstrap
 
@@ -122,4 +123,5 @@ npm --prefix bridge run build
 - plugin jar name을 바꾸면 `paper.Dockerfile`의 `COPY --from=plugin-build` 경로를 확인한다.
 - webhook path/port를 바꾸면 compose, entrypoint, bridge env, plugin config를 같이 수정한다.
 - bridge production dependency를 바꾸면 `bridge.Dockerfile`의 install/build stage가 맞는지 확인한다.
+- bridge dependency를 바꾸면 `bridge/package-lock.json`을 함께 갱신하고 `npm --prefix bridge ci --dry-run`으로 Docker `npm ci` 입력을 확인한다.
 - host port 공개 정책을 바꾸면 README와 webhook protocol 문서도 수정한다.

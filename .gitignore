@@ -6,6 +6,7 @@
 node_modules/
 dist/
 coverage/
+!bridge/package-lock.json
 
 # Gradle / Java build output
 build/
