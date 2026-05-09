@@ -130,6 +130,7 @@ git diff --check
 
 - host에 publish되는 포트는 Minecraft `25565`뿐입니다.
 - plugin webhook `29371`은 Docker network 내부 전용입니다.
+- AWS EC2 배포에서도 security group에 `29371`을 열지 않습니다. 외부 공개는 SSH 관리 포트와 Minecraft `25565`만 사용합니다.
 - bridge는 `http://paper:29371/chzzk/donations`로만 donation payload를 보냅니다.
 - plugin은 `X-Chzzk-Signature` HMAC을 검증하고, 중복 `eventId`는 duplicate로 처리합니다.
 - Paper API 호출은 Minecraft 메인 스레드에서 실행되어야 합니다.
@@ -162,6 +163,7 @@ volume을 삭제하면 world/state/token도 삭제됩니다.
 | CHZZK 인증과 session | `docs/bridge/chzzk-auth-and-session.md` |
 | Minecraft webhook protocol | `docs/bridge/webhook-protocol.md` |
 | Docker 실행과 배포 | `docs/infra/docker-deployment.md` |
+| AWS EC2 배포 | `docs/infra/aws-ec2-deployment.md` |
 | 환경 변수 | `docs/infra/env-reference.md` |
 | 테스트와 커버리지 | `docs/testing/coverage-and-runbook.md` |
 
