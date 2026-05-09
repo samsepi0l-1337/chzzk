@@ -14,6 +14,7 @@
 | CHZZK 인증/세션 브리지 | [bridge/chzzk-auth-and-session.md](bridge/chzzk-auth-and-session.md) | `bridge/src/chzzk-auth.ts`, `bridge/src/chzzk-session.ts`, `bridge/src/auth-cli.ts`, `bridge/src/token-store.ts` |
 | Minecraft webhook 프로토콜 | [bridge/webhook-protocol.md](bridge/webhook-protocol.md) | `bridge/src/webhook-client.ts`, `bridge/src/donation-parser.ts`, `plugin/src/main/java/dev/samsepiol/chzzk/webhook` |
 | Docker 실행/배포 | [infra/docker-deployment.md](infra/docker-deployment.md) | `docker-compose.yml`, `docker/bridge.Dockerfile`, `docker/paper.Dockerfile`, `docker/paper-entrypoint.sh` |
+| AWS EC2 배포 | [infra/aws-ec2-deployment.md](infra/aws-ec2-deployment.md) | `docker-compose.yml`, `.env.example`, `docs/infra/docker-deployment.md`, `docs/infra/env-reference.md` |
 | 환경 변수 | [infra/env-reference.md](infra/env-reference.md) | `.env.example`, `bridge/.env.example`, `bridge/src/config.ts`, `docker-compose.yml` |
 | 테스트/커버리지 | [testing/coverage-and-runbook.md](testing/coverage-and-runbook.md) | `plugin/src/test`, `bridge/test`, `plugin/build.gradle.kts`, `bridge/vitest.config.ts` |
 
@@ -24,4 +25,4 @@
 - `.chzzk-tokens.json*`, `.env`, `.cursor`, `.omx`는 로컬 상태 또는 secret이므로 커밋하지 않는다.
 - `plugin/src/main`을 수정할 때는 대응 테스트가 `plugin/src/test`에 있는지 확인한다.
 - `bridge/src`를 수정할 때는 대응 테스트가 `bridge/test`에 있는지 확인한다.
-- 운영에 영향을 주는 변경은 [infra/env-reference.md](infra/env-reference.md)와 [infra/docker-deployment.md](infra/docker-deployment.md)를 함께 확인한다.
+- 운영에 영향을 주는 변경은 [infra/env-reference.md](infra/env-reference.md), [infra/docker-deployment.md](infra/docker-deployment.md), [infra/aws-ec2-deployment.md](infra/aws-ec2-deployment.md)를 함께 확인한다.
