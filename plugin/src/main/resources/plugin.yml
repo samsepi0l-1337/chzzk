@@ -1,0 +1,13 @@
+name: ChzzkDonation
+version: 0.1.0
+main: dev.samsepiol.chzzk.ChzzkDonationPlugin
+api-version: '1.21'
+commands:
+  chzzk:
+    description: Manage CHZZK donation effects.
+    usage: /chzzk <target|sidebar|deaths|simulate|reload>
+    permission: chzzkdonation.admin
+permissions:
+  chzzkdonation.admin:
+    description: Allows CHZZK donation administration.
+    default: op
