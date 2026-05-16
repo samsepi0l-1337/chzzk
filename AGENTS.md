@@ -28,7 +28,7 @@
 - test coverage를 100% 유지한다.
 - test 진행후 전체 파일을 검토하여 누락된 부분이 있는지 확인한다.
 - 코드를 수정한 후에는 documentation을 업데이트한다.
-- 작업이 끝나면 pr commit & push 하고, `@codex review` + review 해야하는 사항들을 작성한다.
+- commit/push/PR은 사용자가 명시적으로 요청했을 때만 한다. PR에는 `@codex review`와 review 해야 하는 사항을 작성한다.
 
 ## Documentation
 
@@ -54,7 +54,11 @@
 ## Learned Workspace Facts
 
 - `bridge`는 `dotenv` 없이 `.env`를 자동 로드하지 않는다. Docker 없이 bridge를 실행할 때는 프로세스 환경 변수를 직접 설정한다.
-- CHZZK 채널·유저 ID를 지정하는 env/config 필드는 없다. 후원 WebSocket 세션은 OAuth로 발급된 토큰이 가리키는 인가 계정 기준이다.
+- `CHZZK_CHANNEL_ID`는 필수 bridge env이며 수신 `DONATION.channelId` 검증 필터다. Session 구독 주체는 OAuth/token 계정이다.
+- 후원은 CHZZK Session 실시간 `DONATION`만 처리한다. 공식 문서에 과거 후원 REST가 없어 backfill은 하지 않는다.
+- Minecraft 효과는 `payAmount`가 tier 금액(1000·2000·3000·5000·10000·30000·50000·100000)과 정확히 일치할 때만 실행한다.
+- Minecraft/Paper 런타임은 1.21.1 / Java 21로 고정한다(`plugin/build.gradle.kts`, `docker/paper.Dockerfile`).
+- 공식 `DONATION` payload에 안정 event id가 없어 bridge가 webhook `eventId`를 생성한다. upstream이 동일 후원을 재전달하면 plugin dedupe가 막지 못할 수 있다.
 - 마인크래프트에서 후원 효과를 받을 플레이어는 `config.yml`이 아니라 게임 내 `/chzzk target set <플레이어>`로 지정한다.
 - bridge 기동에는 token store(예: `.chzzk-tokens.json`) 또는 `CHZZK_REFRESH_TOKEN`이 필요하다. 둘 다 없으면 bridge가 즉시 종료한다.
 - Docker로 bridge 이미지를 빌드할 때 `bridge/package.json`과 `bridge/package-lock.json`이 불일치하면 `npm ci` 단계에서 실패한다.

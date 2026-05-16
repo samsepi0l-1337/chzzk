@@ -7,9 +7,9 @@ Docker Compose 없이 **Paper 서버(플러그인)**와 **Node `bridge`**를 Win
 | 항목            | 권장                                                                                                                                                      |
 | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | OS              | Windows 10/11                                                                                                                                             |
-| Java            | **JDK 21** (플러그인 `build.gradle.kts`의 `JavaVersion.VERSION_21`, Paper 1.21.x와 맞춤)                                                                  |
+| Java            | **JDK 21** (플러그인 `build.gradle.kts`의 `JavaVersion.VERSION_21`, Paper 1.21.1과 맞춤)                                                                  |
 | Node.js         | **LTS** (npm 포함). `bridge/package.json` 스크립트 기준                                                                                                   |
-| Paper           | **1.21.8** 등 이 저장소가 타깃으로 하는 버전. Docker 이미지는 `docker/paper.Dockerfile`의 `PAPER_VERSION` / `PAPER_BUILD`와 동일 계열을 쓴다.             |
+| Paper           | **1.21.1**. Docker 이미지는 `docker/paper.Dockerfile`의 `PAPER_VERSION=1.21.1` / `PAPER_BUILD=133`과 맞춘다.                                               |
 | Git for Windows | 선택이지만 **권장**. 저장소 루트에 Unix용 `gradlew`만 있고 **`gradlew.bat`은 포함하지 않는다**. Git Bash에서 `./gradlew`를 실행하는 경로가 가장 단순하다. |
 
 ## 1. 플러그인 JAR 빌드
@@ -38,7 +38,7 @@ plugin\build\libs\chzzk-donation-0.1.0.jar
 
 ## 2. Paper 서버
 
-1. [Paper 다운로드](https://papermc.io/downloads/paper)에서 **1.21.8** 등 호환 버전 JAR을 받는다.
+1. [Paper 다운로드](https://papermc.io/downloads/paper)에서 **1.21.1** JAR을 받는다.
 2. 서버 전용 폴더에 `paper.jar`(이름은 임의)와 위 JAR을 둔다.
 3. 최초 실행 후 `eula.txt`에서 `eula=true`로 저장한다.
 4. 다시 기동:
@@ -61,7 +61,7 @@ java -jar paper.jar --nogui
 ## 4. CHZZK 토큰 (선택 경로)
 
 - **refresh token만으로 bootstrap**: `bridge`에서 `npm run build` 후 `npm run auth` ([chzzk-auth-and-session.md](../bridge/chzzk-auth-and-session.md)).
-- **authorization code**: 브라우저에서 치지직 문서의 `account-interlock` 요청 시 `redirectUri`는 개발자 센터에 등록한 URL과 **문자 단위로 동일**해야 한다. 이 저장소는 `redirectUri`를 env로 읽지 않는다.
+- **authorization code**: `code`와 `state`를 이미 확보한 경우 `npm run auth -- --code "<code>" --state "<state>"`로 token store를 저장할 수 있다.
 
 ## 5. bridge 환경 변수
 
@@ -73,6 +73,7 @@ java -jar paper.jar --nogui
 | -------------------------- | ---------------------------------------------------------------------------------------------- |
 | `CHZZK_CLIENT_ID`          | CHZZK OpenAPI Client ID                                                                        |
 | `CHZZK_CLIENT_SECRET`      | CHZZK OpenAPI Client Secret                                                                    |
+| `CHZZK_CHANNEL_ID`         | 수신 `DONATION.channelId`와 정확 비교할 대상 채널 ID                                           |
 | `MINECRAFT_WEBHOOK_SECRET` | 플러그인 `webhook.shared-secret`과 동일                                                        |
 | `CHZZK_TOKEN_STORE`        | (선택) token JSON 절대 경로. 미설정 시 bridge **현재 작업 디렉터리** 기준 `.chzzk-tokens.json` |
 
@@ -90,6 +91,7 @@ cd C:\path\to\chzzk\bridge
 
 $env:CHZZK_CLIENT_ID = "your-client-id"
 $env:CHZZK_CLIENT_SECRET = "your-client-secret"
+$env:CHZZK_CHANNEL_ID = "target-streamer-channel-id"
 $env:MINECRAFT_WEBHOOK_SECRET = "same-as-plugin-config-yml"
 $env:CHZZK_TOKEN_STORE = "C:\path\to\chzzk\bridge\.chzzk-tokens.json"
 
@@ -107,6 +109,7 @@ npm run start
 cd C:\path\to\chzzk\bridge
 set CHZZK_CLIENT_ID=your-client-id
 set CHZZK_CLIENT_SECRET=your-client-secret
+set CHZZK_CHANNEL_ID=target-streamer-channel-id
 set MINECRAFT_WEBHOOK_SECRET=same-as-plugin-config-yml
 set CHZZK_TOKEN_STORE=C:\path\to\chzzk\bridge\.chzzk-tokens.json
 
@@ -153,7 +156,7 @@ npm run auth -- --refresh-token "paste-refresh-token-here"
 | 증상               | 확인                                                                                     |
 | ------------------ | ---------------------------------------------------------------------------------------- |
 | Gradle 실행 안 됨  | Git Bash에서 `./gradlew shadowJar` 또는 시스템 `gradle` 사용                             |
-| bridge가 바로 종료 | `CHZZK_CLIENT_ID` / `CHZZK_CLIENT_SECRET` / token store 또는 `CHZZK_REFRESH_TOKEN`       |
+| bridge가 바로 종료 | `CHZZK_CLIENT_ID` / `CHZZK_CLIENT_SECRET` / `CHZZK_CHANNEL_ID` / token store 또는 `CHZZK_REFRESH_TOKEN` |
 | webhook 준비 실패  | Paper 기동 여부, 방화벽, `config.yml`의 `webhook.port`, bridge의 `MINECRAFT_WEBHOOK_URL` |
 | signature 오류     | `MINECRAFT_WEBHOOK_SECRET`과 `config.yml`의 `shared-secret` 일치 여부                    |
 

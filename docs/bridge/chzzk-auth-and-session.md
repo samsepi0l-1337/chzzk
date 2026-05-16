@@ -37,50 +37,19 @@
 
 토큰 파일은 secret으로 취급한다. 문서, 로그, 테스트 fixture에 실제 토큰을 넣지 않는다.
 
-## OAuth 인증 코드 (루트 `.env` 기준)
+## Token bootstrap
 
-개발자 센터에 등록한 **로그인 리디렉션 URL**과 동일한 값을 `.env`의 `CHZZK_REDIRECT_URI`에 넣는다. `CHZZK_AUTH_STATE`가 비어 있으면 `auth:url`이 새 state를 생성해 출력한다.
+bridge 기동에는 token store 또는 `CHZZK_REFRESH_TOKEN`이 필요하다. 둘 다 없으면 `bridge/src/index.ts`가 즉시 실패한다.
 
-### 1. 인증 URL 출력
-
-```bash
-npm run auth:url
-```
-
-또는:
+refresh token으로 token store를 저장한다.
 
 ```bash
-./scripts/chzzk-oauth.sh url
+cd bridge
+npm run build
+npm run auth -- --refresh-token "<refresh-token>"
 ```
 
-브라우저에서 URL을 연 뒤, 리디렉트 URL의 `code`와 `state`를 복사한다. 출력된 `CHZZK_AUTH_STATE`와 redirect의 `state`가 같아야 한다.
-
-### 2. 토큰 교환 (curl)
-
-`.env`에 `CHZZK_AUTH_CODE`, `CHZZK_AUTH_STATE`를 넣거나 셸에서 export한 뒤:
-
-```bash
-./scripts/chzzk-oauth.sh exchange
-```
-
-수동 curl 예:
-
-```bash
-set -a && source .env && set +a
-curl -sS -X POST "${CHZZK_OPENAPI_BASE_URL:-https://openapi.chzzk.naver.com}/auth/v1/token" \
-  -H "Content-Type: application/json" \
-  -d "$(node -e 'process.stdout.write(JSON.stringify({
-    grantType: "authorization_code",
-    clientId: process.env.CHZZK_CLIENT_ID,
-    clientSecret: process.env.CHZZK_CLIENT_SECRET,
-    code: process.env.CHZZK_AUTH_CODE,
-    state: process.env.CHZZK_AUTH_STATE
-  }))')"
-```
-
-응답 `content.refreshToken`을 `.env`의 `CHZZK_REFRESH_TOKEN`에 넣거나 bridge auth CLI로 token store에 저장한다.
-
-### 3. token store 저장 (기존 auth CLI)
+authorization code와 state를 이미 확보한 경우에는 auth CLI가 token exchange를 수행할 수 있다.
 
 ```bash
 cd bridge
@@ -91,7 +60,7 @@ npm run auth -- --code "<code>" --state "<state>"
 Docker volume bootstrap:
 
 ```bash
-docker compose -f docker-compose.yml run --rm bridge npm run auth -- --code "<code>" --state "<state>"
+docker compose -f docker-compose.yml run --rm bridge npm run auth -- --refresh-token "$CHZZK_REFRESH_TOKEN"
 ```
 
 ## Auth CLI
@@ -138,6 +107,15 @@ Docker 첫 live session에서는 `.env`의 `CHZZK_REFRESH_TOKEN`만으로도 bri
 
 구현: `bridge/src/chzzk-session.ts`
 
+공식 CHZZK 문서에서 후원 조회 scope는 Session API의 `DONATION` 이벤트 구독에 사용된다. 문서상 확인되는 REST endpoint는 다음 경계에 머문다.
+
+- `GET /open/v1/sessions/auth`: 유저 session socket URL 생성.
+- `GET /open/v1/sessions`: 생성된 session과 구독 이벤트 목록 조회.
+- `POST /open/v1/sessions/events/subscribe/donation`: 연결된 session에 후원 이벤트 구독.
+- `POST /open/v1/sessions/events/unsubscribe/donation`: 후원 이벤트 구독 취소.
+
+과거 후원 내역을 조회하는 REST endpoint는 공식 문서에서 확인되지 않는다. bridge는 backfill 없이 session 연결 이후 도착한 실시간 `DONATION` 메시지만 처리한다.
+
 Session 시작:
 
 1. `GET /open/v1/sessions/auth`로 session URL을 받는다.
@@ -147,7 +125,7 @@ Session 시작:
 5. `DONATION` 이벤트의 `channelId`를 `CHZZK_CHANNEL_ID`와 비교한다.
 6. 일치하는 이벤트만 webhook으로 전달하고, 누락 또는 불일치 이벤트는 무시한다.
 
-CHZZK Session 구독 API는 channel ID를 query/body로 받지 않는다. 대상 스트리머 제한은 수신 payload의 `channelId`를 bridge에서 검증하는 방식으로 적용한다.
+CHZZK Session 구독 API는 channel ID를 query/body로 받지 않는다. 대상 스트리머 제한은 수신 payload의 `channelId`를 bridge에서 `CHZZK_CHANNEL_ID`와 비교해 적용한다. OAuth/token이 가리키는 계정이 Session 구독 주체이고, `CHZZK_CHANNEL_ID`는 수신된 `DONATION.channelId` 필터다.
 
 현재 client 옵션:
 
@@ -175,6 +153,8 @@ CHZZK Session 구독 API는 channel ID를 query/body로 받지 않는다. 대상
 - `message`: typed wrapper 형태의 `SYSTEM` 또는 `DONATION` 처리.
 - `connect_error`: 로그.
 - `disconnect`: 로그.
+
+공식 `DONATION` 메시지 필드는 `donationType`, `channelId`, `donatorChannelId`, `donatorNickname`, `payAmount`, `donationText`, `emojis`로 문서화되어 있으며 안정적인 event id 필드는 없다. webhook `eventId`는 bridge가 생성한 내부 중복 키다.
 
 각 handler는 `logFailure`로 감싸져 socket listener에서 promise rejection이 누락되지 않게 한다.
 

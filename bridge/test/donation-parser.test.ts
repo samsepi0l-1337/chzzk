@@ -26,10 +26,17 @@ describe("normalizeDonation", () => {
     });
   });
 
+  it("preserves exact tier amounts and the Java int upper bound", () => {
+    for (const amount of [1000, 2000, 3000, 5000, 10000, 30000, 50000, 100000, 2147483647]) {
+      expect(parsePayAmount(amount.toLocaleString("en-US"))).toBe(amount);
+    }
+  });
+
   it("rejects invalid amounts", () => {
     expect(() => normalizeDonation({ payAmount: "10.5" })).toThrow(/Invalid payAmount/);
     expect(() => parsePayAmount(undefined)).toThrow(/expected string, got undefined/);
     expect(() => parsePayAmount("0")).toThrow(/Invalid payAmount: 0/);
+    expect(() => parsePayAmount("2,147,483,648")).toThrow(/Invalid payAmount/);
     expect(() => parsePayAmount(String(Number.MAX_SAFE_INTEGER + 1))).toThrow(/Invalid payAmount/);
   });
 

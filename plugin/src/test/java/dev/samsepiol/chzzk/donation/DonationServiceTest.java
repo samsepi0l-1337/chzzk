@@ -28,14 +28,49 @@ final class DonationServiceTest {
     }
 
     @Test
-    void ignoresUnknownAmountsWithoutRunningEffects() {
+    void runsEveryExactTierAmount() {
         List<DonationTier> ran = new ArrayList<>();
         DonationService service = new DonationService(
                 new HashSet<>(),
                 () -> TargetAvailability.AVAILABLE,
                 ran::add);
 
-        assertEquals(DonationStatus.UNKNOWN_AMOUNT, service.handle(event("evt-2", 5500)).status());
+        for (DonationTier tier : DonationTier.values()) {
+            assertEquals(
+                    DonationStatus.ACCEPTED,
+                    service.handle(event("evt-tier-" + tier.amount(), tier.amount())).status(),
+                    tier.name());
+        }
+
+        assertEquals(List.of(DonationTier.values()), ran);
+    }
+
+    @Test
+    void ignoresNonExactAmountsWithoutRunningEffects() {
+        List<DonationTier> ran = new ArrayList<>();
+        DonationService service = new DonationService(
+                new HashSet<>(),
+                () -> TargetAvailability.AVAILABLE,
+                ran::add);
+
+        int[] unknownAmounts = {
+                999, 1001,
+                1999, 2001,
+                2999, 3001,
+                4999, 5001,
+                9999, 10001,
+                29999, 30001,
+                49999, 50001,
+                99999, 100001,
+                Integer.MAX_VALUE
+        };
+
+        for (int amount : unknownAmounts) {
+            assertEquals(
+                    DonationStatus.UNKNOWN_AMOUNT,
+                    service.handle(event("evt-unknown-" + amount, amount)).status(),
+                    "amount=" + amount);
+        }
         assertEquals(List.of(), ran);
     }
 

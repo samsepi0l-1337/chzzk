@@ -64,6 +64,8 @@ Docker 실행에서는 webhook host가 `0.0.0.0`으로 설정된다. 기본 reso
 
 ## Target 해석
 
+후원 효과 대상은 `config.yml`에 쓰지 않는다. 운영자는 게임 안에서 `/chzzk target set <player>`로 target을 지정하고, 플러그인은 그 값을 `state.json`에 저장한다.
+
 `TargetService.set` 정책:
 
 - 인자가 UUID면 `Bukkit.getPlayer(uuid)`로 온라인 플레이어를 찾는다.

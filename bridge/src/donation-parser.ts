@@ -51,7 +51,7 @@ export function parsePayAmount(payAmount: unknown): number {
   }
 
   const amount = Number(normalized);
-  if (!Number.isSafeInteger(amount) || amount <= 0) {
+  if (!Number.isSafeInteger(amount) || amount <= 0 || amount > 2147483647) {
     throw new Error(`Invalid payAmount: ${payAmount}`);
   }
 
