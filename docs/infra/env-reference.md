@@ -8,18 +8,18 @@ Docker compose 기준 파일:
 
 - `.env.example`
 
-| 변수 | 필수 | 기본/예시 | 사용처 |
-| --- | --- | --- | --- |
-| `EULA` | 예 | `true` | `paper-entrypoint.sh`; Minecraft EULA 수락 여부 |
-| `CHZZK_CLIENT_ID` | 예 | `your-client-id` | bridge CHZZK auth |
-| `CHZZK_CLIENT_SECRET` | 예 | `your-client-secret` | bridge CHZZK auth |
-| `CHZZK_REFRESH_TOKEN` | 첫 token store가 없으면 예 | empty | bridge 첫 live session token bootstrap |
-| `CHZZK_OPENAPI_BASE_URL` | 아니오 | `https://openapi.chzzk.naver.com` | CHZZK API base URL |
-| `MINECRAFT_WEBHOOK_SECRET` | 예 | empty | bridge signature와 plugin HMAC 검증 |
-| `WEBHOOK_MAX_ATTEMPTS` | 아니오 | `3` | bridge webhook send retry |
-| `WEBHOOK_RETRY_DELAY_MS` | 아니오 | `500` | bridge retry delay |
-| `WEBHOOK_READY_MAX_ATTEMPTS` | 아니오 | `30` | bridge webhook readiness retry |
-| `WEBHOOK_READY_RETRY_DELAY_MS` | 아니오 | `1000` | readiness retry delay |
+| 변수                           | 필수                       | 기본/예시                         | 사용처                                          |
+| ------------------------------ | -------------------------- | --------------------------------- | ----------------------------------------------- |
+| `EULA`                         | 예                         | `true`                            | `paper-entrypoint.sh`; Minecraft EULA 수락 여부 |
+| `CHZZK_CLIENT_ID`              | 예                         | `your-client-id`                  | bridge CHZZK auth                               |
+| `CHZZK_CLIENT_SECRET`          | 예                         | `your-client-secret`              | bridge CHZZK auth                               |
+| `CHZZK_REFRESH_TOKEN`          | 첫 token store가 없으면 예 | empty                             | bridge 첫 live session token bootstrap          |
+| `CHZZK_OPENAPI_BASE_URL`       | 아니오                     | `https://openapi.chzzk.naver.com` | CHZZK API base URL                              |
+| `MINECRAFT_WEBHOOK_SECRET`     | 예                         | empty                             | bridge signature와 plugin HMAC 검증             |
+| `WEBHOOK_MAX_ATTEMPTS`         | 아니오                     | `3`                               | bridge webhook send retry                       |
+| `WEBHOOK_RETRY_DELAY_MS`       | 아니오                     | `500`                             | bridge retry delay                              |
+| `WEBHOOK_READY_MAX_ATTEMPTS`   | 아니오                     | `30`                              | bridge webhook readiness retry                  |
+| `WEBHOOK_READY_RETRY_DELAY_MS` | 아니오                     | `1000`                            | readiness retry delay                           |
 
 운영에서는 `MINECRAFT_WEBHOOK_SECRET`을 비워두지 않는다. 루트 Docker compose는 `EULA`, `CHZZK_CLIENT_ID`, `CHZZK_CLIENT_SECRET`, `MINECRAFT_WEBHOOK_SECRET`이 비어 있으면 config 단계에서 실패한다.
 
@@ -33,13 +33,15 @@ bridge 단독 실행 기준 파일:
 
 - `bridge/.env.example`
 
+Windows에서 CMD/PowerShell로 bridge를 띄울 때는 **`.env`를 Node가 자동 로드하지 않는다** (`bridge/src/config.ts`만 사용). 환경 변수 설정 예시는 [windows-local-run.md](windows-local-run.md)를 본다.
+
 추가 변수:
 
-| 변수 | 기본/예시 | 의미 |
-| --- | --- | --- |
-| `CHZZK_TOKEN_STORE` | `.chzzk-tokens.json` | token JSON 저장 경로 |
-| `CHZZK_REFRESH_TOKEN` | empty | token store가 없을 때 첫 live session bootstrap에 사용할 refresh token |
-| `MINECRAFT_WEBHOOK_URL` | `http://127.0.0.1:29371/chzzk/donations` | plugin webhook URL |
+| 변수                    | 기본/예시                                | 의미                                                                   |
+| ----------------------- | ---------------------------------------- | ---------------------------------------------------------------------- |
+| `CHZZK_TOKEN_STORE`     | `.chzzk-tokens.json`                     | token JSON 저장 경로                                                   |
+| `CHZZK_REFRESH_TOKEN`   | empty                                    | token store가 없을 때 첫 live session bootstrap에 사용할 refresh token |
+| `MINECRAFT_WEBHOOK_URL` | `http://127.0.0.1:29371/chzzk/donations` | plugin webhook URL                                                     |
 
 루트 Docker 실행에서는 compose가 `CHZZK_TOKEN_STORE=/data/.chzzk-tokens.json`와 `MINECRAFT_WEBHOOK_URL=http://paper:29371/chzzk/donations`를 지정한다.
 

@@ -42,6 +42,7 @@
 - `bridge/src/chzzk-auth.ts`, `bridge/src/chzzk-session.ts`, `bridge/src/auth-cli.ts`, `bridge/src/token-store.ts`: `docs/bridge/chzzk-auth-and-session.md`
 - `bridge/src/webhook-client.ts`, `bridge/src/donation-parser.ts`, `plugin/src/main/java/dev/samsepiol/chzzk/webhook`: `docs/bridge/webhook-protocol.md`
 - `docker-compose.yml`, `docker/bridge.Dockerfile`, `docker/paper.Dockerfile`, `docker/paper-entrypoint.sh`: `docs/infra/docker-deployment.md`
+- Windows 로컬 실행 절차: `docs/infra/windows-local-run.md`
 - `.env.example`, `bridge/.env.example`, `bridge/src/config.ts`, `docker-compose.yml`: `docs/infra/env-reference.md`
 - `plugin/src/test`, `bridge/test`, `plugin/build.gradle.kts`, `bridge/vitest.config.ts`: `docs/testing/coverage-and-runbook.md`
 - `bridge/dist`, `bridge/coverage`, `plugin/build`, `.gradle`, `.omx`, `.cursor`, `.chzzk-tokens.json*`는 산출물/로컬 상태/secret이므로 구현 판단의 기준으로 삼지 않는다.
