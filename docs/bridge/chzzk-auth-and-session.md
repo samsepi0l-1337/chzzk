@@ -36,6 +36,63 @@
 
 토큰 파일은 secret으로 취급한다. 문서, 로그, 테스트 fixture에 실제 토큰을 넣지 않는다.
 
+## OAuth 인증 코드 (루트 `.env` 기준)
+
+개발자 센터에 등록한 **로그인 리디렉션 URL**과 동일한 값을 `.env`의 `CHZZK_REDIRECT_URI`에 넣는다. `CHZZK_AUTH_STATE`가 비어 있으면 `auth:url`이 새 state를 생성해 출력한다.
+
+### 1. 인증 URL 출력
+
+```bash
+npm run auth:url
+```
+
+또는:
+
+```bash
+./scripts/chzzk-oauth.sh url
+```
+
+브라우저에서 URL을 연 뒤, 리디렉트 URL의 `code`와 `state`를 복사한다. 출력된 `CHZZK_AUTH_STATE`와 redirect의 `state`가 같아야 한다.
+
+### 2. 토큰 교환 (curl)
+
+`.env`에 `CHZZK_AUTH_CODE`, `CHZZK_AUTH_STATE`를 넣거나 셸에서 export한 뒤:
+
+```bash
+./scripts/chzzk-oauth.sh exchange
+```
+
+수동 curl 예:
+
+```bash
+set -a && source .env && set +a
+curl -sS -X POST "${CHZZK_OPENAPI_BASE_URL:-https://openapi.chzzk.naver.com}/auth/v1/token" \
+  -H "Content-Type: application/json" \
+  -d "$(node -e 'process.stdout.write(JSON.stringify({
+    grantType: "authorization_code",
+    clientId: process.env.CHZZK_CLIENT_ID,
+    clientSecret: process.env.CHZZK_CLIENT_SECRET,
+    code: process.env.CHZZK_AUTH_CODE,
+    state: process.env.CHZZK_AUTH_STATE
+  }))')"
+```
+
+응답 `content.refreshToken`을 `.env`의 `CHZZK_REFRESH_TOKEN`에 넣거나 bridge auth CLI로 token store에 저장한다.
+
+### 3. token store 저장 (기존 auth CLI)
+
+```bash
+cd bridge
+npm run build
+npm run auth -- --code "<code>" --state "<state>"
+```
+
+Docker volume bootstrap:
+
+```bash
+docker compose -f docker-compose.yml run --rm bridge npm run auth -- --code "<code>" --state "<state>"
+```
+
 ## Auth CLI
 
 진입점: `bridge/src/auth-cli.ts`

@@ -7,7 +7,8 @@ async function main(): Promise<void> {
   const store = new TokenStore(config.tokenStorePath);
   const code = readArg("--code") ?? process.env.CHZZK_AUTH_CODE;
   const state = readArg("--state") ?? process.env.CHZZK_AUTH_STATE;
-  const refreshToken = readArg("--refresh-token") ?? process.env.CHZZK_REFRESH_TOKEN;
+  const refreshToken =
+    readArg("--refresh-token") ?? process.env.CHZZK_REFRESH_TOKEN;
 
   if (refreshToken) {
     await store.save(
@@ -15,8 +16,8 @@ async function main(): Promise<void> {
         clientId: config.chzzk.clientId,
         clientSecret: config.chzzk.clientSecret,
         refreshToken,
-        baseUrl: config.chzzk.baseUrl
-      })
+        baseUrl: config.chzzk.baseUrl,
+      }),
     );
     return;
   }
@@ -31,8 +32,8 @@ async function main(): Promise<void> {
       clientSecret: config.chzzk.clientSecret,
       code,
       state,
-      baseUrl: config.chzzk.baseUrl
-    })
+      baseUrl: config.chzzk.baseUrl,
+    }),
   );
 }
 

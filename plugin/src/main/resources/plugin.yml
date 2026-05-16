@@ -1,7 +1,7 @@
 name: ChzzkDonation
 version: 0.1.0
 main: dev.samsepiol.chzzk.ChzzkDonationPlugin
-api-version: '1.21'
+api-version: "1.21"
 commands:
   chzzk:
     description: Manage CHZZK donation effects.

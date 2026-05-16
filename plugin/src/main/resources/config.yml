@@ -2,7 +2,7 @@ webhook:
   host: "127.0.0.1"
   port: 29371
   path: "/chzzk/donations"
-  shared-secret: "change-me"
+  shared-secret: "test-secret"
 sidebar:
   enabled: true
 teleport:

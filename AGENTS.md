@@ -50,3 +50,14 @@
 ## Project
 
 - PR에는 `@codex review`, 문제, 원인, 수정 범위, 검증 결과, UI 변경 시 스크린샷을 포함한다.
+
+## Learned Workspace Facts
+
+- `bridge`는 `dotenv` 없이 `.env`를 자동 로드하지 않는다. Docker 없이 bridge를 실행할 때는 프로세스 환경 변수를 직접 설정한다.
+- CHZZK 채널·유저 ID를 지정하는 env/config 필드는 없다. 후원 WebSocket 세션은 OAuth로 발급된 토큰이 가리키는 인가 계정 기준이다.
+- 마인크래프트에서 후원 효과를 받을 플레이어는 `config.yml`이 아니라 게임 내 `/chzzk target set <플레이어>`로 지정한다.
+- bridge 기동에는 token store(예: `.chzzk-tokens.json`) 또는 `CHZZK_REFRESH_TOKEN`이 필요하다. 둘 다 없으면 bridge가 즉시 종료한다.
+- Docker로 bridge 이미지를 빌드할 때 `bridge/package.json`과 `bridge/package-lock.json`이 불일치하면 `npm ci` 단계에서 실패한다.
+- 로컬(non-Docker) 기동 순서는 Paper(webhook 포트 29371 준비) → bridge이다.
+- 저장소 루트에는 Unix `gradlew`만 포함되고 `gradlew.bat`은 없다. Windows에서는 Git Bash의 `./gradlew` 또는 시스템 `gradle`을 쓴다.
+- `MINECRAFT_WEBHOOK_SECRET`(bridge env)과 플러그인 `config.yml`의 `webhook.shared-secret`은 동일 값이어야 한다.

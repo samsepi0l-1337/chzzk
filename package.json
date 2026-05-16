@@ -4,6 +4,8 @@
     "test": "npm --prefix bridge test",
     "build": "npm --prefix bridge run build",
     "docker:build": "docker compose -f docker-compose.yml build",
-    "docker:up": "docker compose -f docker-compose.yml up --build"
+    "docker:up": "docker compose -f docker-compose.yml up --build",
+    "auth:url": "npm --prefix bridge run auth:url -- --env-file .env",
+    "auth:exchange": "./scripts/chzzk-oauth.sh exchange"
   }
 }
