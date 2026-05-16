@@ -12,12 +12,15 @@
 6. `createUserSessionUrl`이 CHZZK session auth URL을 받아온다.
 7. `socket.io-client@2.0.3`으로 Session socket에 연결한다.
 8. `SYSTEM connected` 메시지에서 `sessionKey`를 읽고 donation event를 subscribe한다.
-9. `DONATION` 이벤트를 `normalizeDonation`으로 Minecraft payload로 변환한다.
-10. `MinecraftWebhookClient.send`가 JSON body를 HMAC-SHA256으로 서명해 plugin webhook에 POST한다.
-11. `DonationWebhookServer`가 HTTP method, body size, HMAC signature, JSON payload를 검증한다.
-12. `DonationService.handle`이 중복 event ID, 후원 금액 티어, 대상 플레이어 상태를 검증한다.
-13. `DonationEffectExecutor`가 Paper 메인 스레드에서 효과를 실행한다.
-14. 최근 event ID를 `state.json`에 저장하고 결과를 JSON으로 반환한다.
+9. `DONATION.channelId`가 `CHZZK_CHANNEL_ID`와 일치하는지 확인한다.
+10. 일치하는 `DONATION` 이벤트만 `normalizeDonation`으로 Minecraft payload로 변환한다.
+11. `MinecraftWebhookClient.send`가 JSON body를 HMAC-SHA256으로 서명해 plugin webhook에 POST한다.
+12. `DonationWebhookServer`가 HTTP method, body size, HMAC signature, JSON payload를 검증한다.
+13. `DonationService.handle`이 중복 event ID, 후원 금액 티어, 대상 플레이어 상태를 검증한다.
+14. `DonationEffectExecutor`가 Paper 메인 스레드에서 효과를 실행한다.
+15. 최근 event ID를 `state.json`에 저장하고 결과를 JSON으로 반환한다.
+
+CHZZK Session 구독은 OAuth 토큰 기준으로 열리며, 특정 스트리머 제한은 bridge가 수신 payload의 `channelId`를 `CHZZK_CHANNEL_ID`와 정확히 비교해 적용한다. `channelId`가 누락되거나 다르면 Minecraft webhook은 호출하지 않는다.
 
 ## Payload 계약
 

@@ -29,6 +29,7 @@ services:
     environment:
       CHZZK_CLIENT_ID: ${CHZZK_CLIENT_ID:?CHZZK_CLIENT_ID is required}
       CHZZK_CLIENT_SECRET: ${CHZZK_CLIENT_SECRET:?CHZZK_CLIENT_SECRET is required}
+      CHZZK_CHANNEL_ID: ${CHZZK_CHANNEL_ID:?CHZZK_CHANNEL_ID is required}
       CHZZK_REFRESH_TOKEN: ${CHZZK_REFRESH_TOKEN:-}
       CHZZK_OPENAPI_BASE_URL: ${CHZZK_OPENAPI_BASE_URL:-https://openapi.chzzk.naver.com}
       CHZZK_TOKEN_STORE: /data/.chzzk-tokens.json

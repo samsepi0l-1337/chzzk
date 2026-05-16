@@ -2,11 +2,15 @@ import { resolve } from "node:path";
 
 export const CHZZK_OPENAPI_BASE_URL = "https://openapi.chzzk.naver.com";
 
+interface ChzzkAuthConfig {
+  clientId: string;
+  clientSecret: string;
+  baseUrl: string;
+}
+
 export interface BridgeConfig {
-  chzzk: {
-    clientId: string;
-    clientSecret: string;
-    baseUrl: string;
+  chzzk: ChzzkAuthConfig & {
+    targetChannelId: string;
   };
   tokenStorePath: string;
   minecraftWebhook: {
@@ -20,7 +24,10 @@ export interface BridgeConfig {
   };
 }
 
-export type BridgeAuthConfig = Pick<BridgeConfig, "chzzk" | "tokenStorePath">;
+export interface BridgeAuthConfig {
+  chzzk: ChzzkAuthConfig;
+  tokenStorePath: string;
+}
 
 export function loadBridgeAuthConfig(env: NodeJS.ProcessEnv = process.env): BridgeAuthConfig {
   return {
@@ -38,6 +45,10 @@ export function loadBridgeConfig(env: NodeJS.ProcessEnv = process.env): BridgeCo
   const webhookUrl = env.MINECRAFT_WEBHOOK_URL ?? "http://127.0.0.1:29371/chzzk/donations";
   return {
     ...authConfig,
+    chzzk: {
+      ...authConfig.chzzk,
+      targetChannelId: requiredTrimmed(env.CHZZK_CHANNEL_ID, "CHZZK_CHANNEL_ID")
+    },
     minecraftWebhook: {
       url: webhookUrl,
       healthUrl: env.MINECRAFT_WEBHOOK_HEALTH_URL ?? `${webhookUrl}/health`,
@@ -63,6 +74,10 @@ function required(value: string | undefined, name: string): string {
     throw new Error(`Missing required environment variable: ${name}`);
   }
   return value;
+}
+
+function requiredTrimmed(value: string | undefined, name: string): string {
+  return required(value, name).trim();
 }
 
 function parsePositiveInt(value: string | undefined, fallback: number, name: string): number {

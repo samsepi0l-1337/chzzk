@@ -25,6 +25,8 @@ Docker 실행은 루트 `docker-compose.yml`과 `docker/` 파일들이 담당한
 
 현재 compose는 host에 `25565`만 publish한다.
 
+`docker-compose.paper.yml`은 Windows에서 Paper만 띄워 Minecraft 접속을 검증하는 경량 경로다. 이 compose 파일은 `bridge` 서비스를 포함하지 않으며 CHZZK credential 없이 `EULA`와 `MINECRAFT_WEBHOOK_SECRET`만 요구한다.
+
 ### bridge
 
 역할:
@@ -102,7 +104,19 @@ npm test
 npm run build
 npm run docker:build
 npm run docker:up
+npm run docker:paper:build
+npm run docker:paper:up
 ```
+
+Windows PowerShell에서 Paper만 실행하는 예:
+
+```powershell
+$env:EULA = "true"
+$env:MINECRAFT_WEBHOOK_SECRET = "replace-with-shared-secret"
+docker compose -f docker-compose.paper.yml up --build
+```
+
+Tailscale로 Windows 서버에 접속할 때는 Windows에서 `tailscale ip -4`로 IP를 확인한 뒤 Minecraft 클라이언트에서 `<windows-tailscale-ip>:25565`로 접속한다. 이 경로는 CHZZK credential 없이 서버 접속과 Paper plugin runtime만 확인하는 용도다.
 
 Gradle:
 

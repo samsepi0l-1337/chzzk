@@ -1,0 +1,23 @@
+services:
+  paper:
+    build:
+      context: .
+      dockerfile: docker/paper.Dockerfile
+    environment:
+      EULA: ${EULA:?EULA=true is required after accepting the Minecraft EULA}
+      MINECRAFT_WEBHOOK_SECRET: ${MINECRAFT_WEBHOOK_SECRET:?MINECRAFT_WEBHOOK_SECRET is required}
+      MINECRAFT_WEBHOOK_PORT: 29371
+      MINECRAFT_WEBHOOK_PATH: /chzzk/donations
+    ports:
+      - "25565:25565"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:29371/chzzk/donations/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 60
+      start_period: 180s
+    volumes:
+      - paper-data:/server
+
+volumes:
+  paper-data:
