@@ -35,7 +35,8 @@ vi.mock("socket.io-client", () => ({
 
 const sessionConfig = {
   accessToken: "access",
-  baseUrl: "https://chzzk.test"
+  baseUrl: "https://chzzk.test",
+  targetChannelId: "target-channel"
 };
 
 function okJson(body: unknown): Response {
@@ -156,9 +157,21 @@ describe("startChzzkDonationSession", () => {
     socket.emit("SYSTEM", { type: "connected", data: {} });
     socket.emit("SYSTEM", { type: "subscribed" });
     socket.emit("DONATION", {
+      channelId: "target-channel",
       payAmount: "1,000",
       donatorNickname: "viewer",
       donationText: "hello"
+    });
+    socket.emit("DONATION", {
+      channelId: "other-channel",
+      payAmount: "1,000",
+      donatorNickname: "ignored-viewer",
+      donationText: "ignored"
+    });
+    socket.emit("DONATION", {
+      payAmount: "1,000",
+      donatorNickname: "missing-channel",
+      donationText: "ignored"
     });
     await flush();
 
@@ -207,11 +220,21 @@ describe("startChzzkDonationSession", () => {
     });
     socket.emit("message", {
       eventType: "DONATION",
-      data: { payAmount: "2,000", donatorNickname: "a", donationText: "x" }
+      data: {
+        channelId: "target-channel",
+        payAmount: "2,000",
+        donatorNickname: "a",
+        donationText: "x"
+      }
     });
     socket.emit("message", {
       type: "DONATION",
-      data: { payAmount: "3,000", donatorNickname: "b", donationText: "y" }
+      data: {
+        channelId: "target-channel",
+        payAmount: "3,000",
+        donatorNickname: "b",
+        donationText: "y"
+      }
     });
     socket.emit("message", {
       eventType: "SYSTEM",
@@ -224,9 +247,27 @@ describe("startChzzkDonationSession", () => {
     });
     socket.emit("message", {
       eventType: "DONATION",
+      channelId: "target-channel",
       payAmount: "4,000",
       donatorNickname: "c",
       donationText: "z"
+    });
+    socket.emit("message", {
+      eventType: "DONATION",
+      data: {
+        channelId: "other-channel",
+        payAmount: "5,000",
+        donatorNickname: "ignored",
+        donationText: "no"
+      }
+    });
+    socket.emit("message", {
+      type: "DONATION",
+      data: {
+        payAmount: "6,000",
+        donatorNickname: "missing",
+        donationText: "no"
+      }
     });
     socket.emit("message", { eventType: "IGNORED" });
     await flush();
@@ -261,7 +302,7 @@ describe("startChzzkDonationSession", () => {
     );
 
     socket.emit("SYSTEM", { type: "connected", data: { sessionKey: "bad" } });
-    socket.emit("DONATION", { payAmount: "1000" });
+    socket.emit("DONATION", { channelId: "target-channel", payAmount: "1000" });
     socket.emit("message", {
       eventType: "SYSTEM",
       data: { type: "connected", data: { sessionKey: "bad-typed" } }

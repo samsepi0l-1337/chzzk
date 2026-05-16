@@ -5,6 +5,7 @@ import type { MinecraftWebhookClient } from "./webhook-client";
 
 export interface ChzzkSessionConfig {
   accessToken: string;
+  targetChannelId?: string;
   baseUrl?: string;
   logger?: Pick<Console, "error" | "warn" | "info">;
 }
@@ -96,12 +97,12 @@ export async function startChzzkDonationSession(
   });
   socket.on("DONATION", (message) => {
     void logFailure(logger, "CHZZK DONATION delivery failed", () =>
-      handleDonationMessage(message, webhookClient)
+      handleDonationMessage(config, message, webhookClient, logger)
     );
   });
   socket.on("message", (message) => {
     void logFailure(logger, "CHZZK typed message handling failed", () =>
-      handleTypedMessage(config, message, webhookClient, fetcher)
+      handleTypedMessage(config, message, webhookClient, fetcher, logger)
     );
   });
   socket.on("connect_error", (error) => {
@@ -129,7 +130,8 @@ async function handleTypedMessage(
   config: ChzzkSessionConfig,
   message: unknown,
   webhookClient: MinecraftWebhookClient,
-  fetcher: Fetcher
+  fetcher: Fetcher,
+  logger: Pick<Console, "info">
 ): Promise<void> {
   const typed = message as ChzzkTypedMessage;
   if (typed.eventType === "SYSTEM" || typed.type === "SYSTEM") {
@@ -137,15 +139,24 @@ async function handleTypedMessage(
     return;
   }
   if (typed.eventType === "DONATION" || typed.type === "DONATION") {
-    await handleDonationMessage(typed.data ?? message, webhookClient);
+    await handleDonationMessage(config, typed.data ?? message, webhookClient, logger);
   }
 }
 
 async function handleDonationMessage(
+  config: ChzzkSessionConfig,
   message: unknown,
-  webhookClient: MinecraftWebhookClient
+  webhookClient: MinecraftWebhookClient,
+  logger: Pick<Console, "info">
 ): Promise<void> {
   const donation = message as ChzzkDonationEvent;
+  if (config.targetChannelId && donation.channelId !== config.targetChannelId) {
+    logger.info("Ignored CHZZK donation from non-target channel", {
+      channelId: donation.channelId ?? null,
+      targetChannelId: config.targetChannelId
+    });
+    return;
+  }
   await webhookClient.send(normalizeDonation(donation));
 }
 

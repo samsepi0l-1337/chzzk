@@ -64,7 +64,8 @@ export async function runBridge(
   await dependencies.startChzzkDonationSession(
     {
       accessToken: token.accessToken,
-      baseUrl: config.chzzk.baseUrl
+      baseUrl: config.chzzk.baseUrl,
+      targetChannelId: config.chzzk.targetChannelId
     },
     webhookClient
   );

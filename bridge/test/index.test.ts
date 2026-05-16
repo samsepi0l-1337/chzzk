@@ -7,6 +7,7 @@ const baseConfig: BridgeConfig = {
   chzzk: {
     clientId: "client-id",
     clientSecret: "client-secret",
+    targetChannelId: "target-channel",
     baseUrl: "https://openapi.test"
   },
   tokenStorePath: "/tmp/.chzzk-tokens.json",
@@ -106,7 +107,8 @@ describe("runBridge", () => {
     expect(startSession).toHaveBeenCalledWith(
       {
         accessToken: "refreshed-access",
-        baseUrl: "https://openapi.test"
+        baseUrl: "https://openapi.test",
+        targetChannelId: "target-channel"
       },
       webhookClient
     );
@@ -142,7 +144,8 @@ describe("runBridge", () => {
     expect(startSession).toHaveBeenCalledWith(
       {
         accessToken: "refreshed-access",
-        baseUrl: "https://openapi.test"
+        baseUrl: "https://openapi.test",
+        targetChannelId: "target-channel"
       },
       webhookClient
     );
@@ -215,7 +218,8 @@ describe("main", () => {
     expect(startChzzkDonationSession).toHaveBeenCalledWith(
       {
         accessToken: "refreshed-access",
-        baseUrl: "https://openapi.test"
+        baseUrl: "https://openapi.test",
+        targetChannelId: "target-channel"
       },
       webhookClient
     );

@@ -14,6 +14,7 @@
 6. plugin webhook health ready 대기.
 7. `MinecraftWebhookClient` 생성.
 8. `startChzzkDonationSession`으로 CHZZK Session socket 시작.
+9. `DONATION.channelId`가 `CHZZK_CHANNEL_ID`와 일치하는 이벤트만 plugin webhook으로 전달한다.
 
 ## Token 저장
 
@@ -143,7 +144,10 @@ Session 시작:
 2. Socket.IO client로 websocket 연결한다.
 3. `SYSTEM connected` 메시지에서 `sessionKey`를 얻는다.
 4. `POST /open/v1/sessions/events/subscribe/donation?sessionKey=<sessionKey>`으로 donation event를 subscribe한다.
-5. `DONATION` 이벤트를 webhook으로 전달한다.
+5. `DONATION` 이벤트의 `channelId`를 `CHZZK_CHANNEL_ID`와 비교한다.
+6. 일치하는 이벤트만 webhook으로 전달하고, 누락 또는 불일치 이벤트는 무시한다.
+
+CHZZK Session 구독 API는 channel ID를 query/body로 받지 않는다. 대상 스트리머 제한은 수신 payload의 `channelId`를 bridge에서 검증하는 방식으로 적용한다.
 
 현재 client 옵션:
 
