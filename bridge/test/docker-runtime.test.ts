@@ -13,10 +13,13 @@ import { describe, expect, test } from "vitest";
 
 const repoRoot = resolve(__dirname, "../..");
 const composeFile = join(repoRoot, "docker-compose.yml");
+const paperOnlyComposeFile = join(repoRoot, "docker-compose.paper.yml");
 const entrypoint = join(repoRoot, "docker/paper-entrypoint.sh");
 const envExample = join(repoRoot, ".env.example");
 const bridgeDockerfile = join(repoRoot, "docker/bridge.Dockerfile");
 const dockerignore = join(repoRoot, ".dockerignore");
+const packageJsonFile = join(repoRoot, "package.json");
+const dockerDocsFile = join(repoRoot, "docs/infra/docker-deployment.md");
 
 function extractBlock(source: string, key: string, indent: number) {
   const lines = source.split("\n");
@@ -124,6 +127,40 @@ describe("Docker runtime configuration", () => {
       "MINECRAFT_WEBHOOK_HEALTH_URL: http://paper:29371/chzzk/donations/health"
     );
     expect(bridgeDependsOnPaperBlock).toContain("condition: service_healthy");
+  });
+
+  test("paper-only compose starts Minecraft without the Node bridge or CHZZK credentials", () => {
+    const compose = readFileSync(paperOnlyComposeFile, "utf8");
+    const paperBlock = extractBlock(compose, "paper", 2);
+    const paperPortsBlock = extractBlock(paperBlock, "ports", 4);
+
+    expect(compose).toContain("services:");
+    expect(compose).toContain("paper:");
+    expect(compose).not.toContain("bridge:");
+    expect(compose).not.toContain("CHZZK_CLIENT_ID");
+    expect(compose).not.toContain("CHZZK_CLIENT_SECRET");
+    expect(compose).not.toContain("CHZZK_REFRESH_TOKEN");
+    expect(compose).toContain(
+      "MINECRAFT_WEBHOOK_SECRET: ${MINECRAFT_WEBHOOK_SECRET:?MINECRAFT_WEBHOOK_SECRET is required}"
+    );
+    expect(listItems(paperPortsBlock)).toEqual(['- "25565:25565"']);
+  });
+
+  test("root scripts expose a Windows-friendly paper-only Docker command", () => {
+    const scripts = JSON.parse(readFileSync(packageJsonFile, "utf8")).scripts;
+
+    expect(scripts["docker:paper:build"]).toBe("docker compose -f docker-compose.paper.yml build");
+    expect(scripts["docker:paper:up"]).toBe("docker compose -f docker-compose.paper.yml up --build");
+  });
+
+  test("Docker docs explain the Windows Tailscale paper-only path", () => {
+    const docs = readFileSync(dockerDocsFile, "utf8");
+
+    expect(docs).toContain("docker-compose.paper.yml");
+    expect(docs).toContain("Windows PowerShell");
+    expect(docs).toContain("tailscale ip -4");
+    expect(docs).toContain("<windows-tailscale-ip>:25565");
+    expect(docs).toContain("CHZZK credential");
   });
 
   test("documents EULA=true as the Docker default template value", () => {
