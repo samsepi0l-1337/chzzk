@@ -17,9 +17,15 @@ const paperOnlyComposeFile = join(repoRoot, "docker-compose.paper.yml");
 const entrypoint = join(repoRoot, "docker/paper-entrypoint.sh");
 const envExample = join(repoRoot, ".env.example");
 const bridgeDockerfile = join(repoRoot, "docker/bridge.Dockerfile");
+const paperDockerfile = join(repoRoot, "docker/paper.Dockerfile");
 const dockerignore = join(repoRoot, ".dockerignore");
 const packageJsonFile = join(repoRoot, "package.json");
 const dockerDocsFile = join(repoRoot, "docs/infra/docker-deployment.md");
+const windowsDocsFile = join(repoRoot, "docs/infra/windows-local-run.md");
+const effectsDocsFile = join(repoRoot, "docs/plugin/effects-and-donation.md");
+const pluginBuildFile = join(repoRoot, "plugin/build.gradle.kts");
+const readmeFile = join(repoRoot, "README.md");
+const planFile = join(repoRoot, "PLAN.md");
 
 function extractBlock(source: string, key: string, indent: number) {
   const lines = source.split("\n");
@@ -151,6 +157,28 @@ describe("Docker runtime configuration", () => {
 
     expect(scripts["docker:paper:build"]).toBe("docker compose -f docker-compose.paper.yml build");
     expect(scripts["docker:paper:up"]).toBe("docker compose -f docker-compose.paper.yml up --build");
+  });
+
+  test("pins Paper runtime and plugin API dependencies to Minecraft 1.21.1", () => {
+    const paperRuntime = readFileSync(paperDockerfile, "utf8");
+    const pluginBuild = readFileSync(pluginBuildFile, "utf8");
+    const compose = readFileSync(composeFile, "utf8");
+    const paperOnlyCompose = readFileSync(paperOnlyComposeFile, "utf8");
+
+    expect(paperRuntime).toContain("ARG PAPER_VERSION=1.21.1");
+    expect(paperRuntime).toContain("ARG PAPER_BUILD=133");
+    expect(compose).toContain('PAPER_VERSION: "1.21.1"');
+    expect(compose).toContain('PAPER_BUILD: "133"');
+    expect(paperOnlyCompose).toContain('PAPER_VERSION: "1.21.1"');
+    expect(paperOnlyCompose).toContain('PAPER_BUILD: "133"');
+    expect(pluginBuild).toContain("paper-api:1.21.1-R0.1-SNAPSHOT");
+    expect(pluginBuild).not.toContain("paper-api:1.21.8");
+
+    for (const file of [readmeFile, planFile, dockerDocsFile, windowsDocsFile, effectsDocsFile]) {
+      const content = readFileSync(file, "utf8");
+      expect(content).not.toContain("1.21.8");
+      expect(content).not.toContain("1.21.x");
+    }
   });
 
   test("Docker docs explain the Windows Tailscale paper-only path", () => {

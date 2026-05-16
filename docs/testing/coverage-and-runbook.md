@@ -110,7 +110,7 @@ bridge:
 
 수동 절차:
 
-1. `.env`에 CHZZK credential, webhook secret, `EULA=true` 설정.
+1. `.env`에 CHZZK credential, `CHZZK_CHANNEL_ID`, webhook secret, `EULA=true` 설정.
 2. token store bootstrap 방식을 선택한다.
    - A: `.env`에 `CHZZK_REFRESH_TOKEN`을 넣어두면 `docker compose up --build` 첫 bridge startup이 `/data/.chzzk-tokens.json`을 생성한다.
    - B: `.env`에 token을 남기지 않으려면 `docker compose -f docker-compose.yml run --rm bridge npm run auth -- --refresh-token "$CHZZK_REFRESH_TOKEN"`로 `bridge-data` volume token store를 먼저 만든다.

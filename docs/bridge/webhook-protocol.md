@@ -59,10 +59,18 @@ X-Chzzk-Signature: sha256=<hmac-hex>
 플러그인은 `Gson`으로 `JsonObject`를 읽고 다음 값을 요구한다.
 
 - `eventId`: string
-- `amount`: int
+- `amount`: JSON number, Java `int` 범위의 정수
 - `receivedAt`: ISO instant string
 
+bridge는 CHZZK `payAmount` 문자열을 정수로 정규화할 때 `2,147,483,647` 이하만 webhook으로 보낸다. plugin은 같은 int 범위를 다시 검증하며, tier 금액과 정확히 일치하지 않는 int 값은 `UNKNOWN_AMOUNT`로 처리한다.
+
 `donatorNickname`, `message`는 없거나 null이면 빈 문자열로 처리한다.
+
+## Duplicate Key Boundary
+
+CHZZK 공식 `DONATION` payload에는 안정적인 event id가 문서화되어 있지 않다. 현재 bridge는 `bridge/src/donation-parser.ts`의 `normalizeDonation`에서 `randomUUID()`로 webhook 전용 `eventId`를 만든다.
+
+plugin의 중복 차단은 이 `eventId`가 같은 경우에만 동작한다. 따라서 같은 webhook 요청을 bridge가 재시도하거나 같은 body가 재전송되는 경우에는 `DUPLICATE`로 막을 수 있지만, CHZZK upstream이 동일한 후원을 별도 socket 메시지로 다시 보내면 bridge가 새 UUID를 생성하므로 plugin은 서로 다른 이벤트로 처리한다.
 
 ## Body Size
 

@@ -73,6 +73,60 @@ final class DonationWebhookServerTest {
     }
 
     @Test
+    void rejectsAmountOutsideSignedIntRangeBeforeHandling() throws Exception {
+        List<DonationTier> effects = new ArrayList<>();
+        int port = startServer(effects, 1024);
+        String body = donationJsonWithAmountLiteral("evt-overflow", "2147483648");
+
+        Response response = post(port, body, signature(body));
+
+        assertEquals(400, response.statusCode());
+        assertEquals(List.of(), effects);
+    }
+
+    @Test
+    void acceptsSignedIntMaxAmountAsUnknownWithoutRunningEffects() throws Exception {
+        List<DonationTier> effects = new ArrayList<>();
+        int port = startServer(effects, 1024);
+        String body = donationJsonWithAmountLiteral("evt-int-max", String.valueOf(Integer.MAX_VALUE));
+
+        Response response = post(port, body, signature(body));
+
+        assertEquals(202, response.statusCode());
+        assertTrue(response.body().contains(DonationStatus.UNKNOWN_AMOUNT.name()));
+        assertEquals(List.of(), effects);
+    }
+
+    @Test
+    void rejectsDecimalAmountsBeforeHandling() throws Exception {
+        List<DonationTier> effects = new ArrayList<>();
+        int port = startServer(effects, 1024);
+        String body = donationJsonWithAmountLiteral("evt-decimal", "1000.0");
+
+        Response response = post(port, body, signature(body));
+
+        assertEquals(400, response.statusCode());
+        assertEquals(List.of(), effects);
+    }
+
+    @Test
+    void rejectsMissingNonPrimitiveAndStringAmountsBeforeHandling() throws Exception {
+        List<DonationTier> effects = new ArrayList<>();
+        int port = startServer(effects, 1024);
+        String[] bodies = {
+                donationJsonWithoutAmount("evt-missing"),
+                donationJsonWithAmountLiteral("evt-null", "null"),
+                donationJsonWithAmountLiteral("evt-object", "{}"),
+                donationJsonWithAmountLiteral("evt-string", "\"1000\"")
+        };
+
+        for (String body : bodies) {
+            assertEquals(400, post(port, body, signature(body)).statusCode());
+        }
+        assertEquals(List.of(), effects);
+    }
+
+    @Test
     void exposesHealthEndpointWithoutSignature() throws Exception {
         int port = startServer(new ArrayList<>(), 1024);
 
@@ -255,9 +309,19 @@ final class DonationWebhookServerTest {
     }
 
     private static String donationJson(String eventId, int amount) {
+        return donationJsonWithAmountLiteral(eventId, String.valueOf(amount));
+    }
+
+    private static String donationJsonWithAmountLiteral(String eventId, String amount) {
         return """
-                {"eventId":"%s","amount":%d,"donatorNickname":"viewer","message":"hello","receivedAt":"2026-05-05T00:00:00Z"}"""
+                {"eventId":"%s","amount":%s,"donatorNickname":"viewer","message":"hello","receivedAt":"2026-05-05T00:00:00Z"}"""
                 .formatted(eventId, amount);
+    }
+
+    private static String donationJsonWithoutAmount(String eventId) {
+        return """
+                {"eventId":"%s","donatorNickname":"viewer","message":"hello","receivedAt":"2026-05-05T00:00:00Z"}"""
+                .formatted(eventId);
     }
 
     private static String signature(String body) {

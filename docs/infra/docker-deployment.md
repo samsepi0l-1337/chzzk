@@ -8,7 +8,7 @@ Docker 실행은 루트 `docker-compose.yml`과 `docker/` 파일들이 담당한
 
 역할:
 
-- Paper 1.21.8 서버 실행.
+- Paper 1.21.1 서버 실행.
 - Gradle로 plugin shadow jar를 빌드한 뒤 `/server/plugins/chzzk-donation.jar`로 복사.
 - `paper-entrypoint.sh`에서 EULA와 plugin config를 준비.
 
@@ -117,6 +117,32 @@ docker compose -f docker-compose.paper.yml up --build
 ```
 
 Tailscale로 Windows 서버에 접속할 때는 Windows에서 `tailscale ip -4`로 IP를 확인한 뒤 Minecraft 클라이언트에서 `<windows-tailscale-ip>:25565`로 접속한다. 이 경로는 CHZZK credential 없이 서버 접속과 Paper plugin runtime만 확인하는 용도다.
+
+## 콘솔 검증
+
+`25565`가 이미 사용 중이면 기존 volume을 지우지 말고 검증용 컨테이너를 별도 포트로 띄운다.
+
+```bash
+docker compose -f docker-compose.paper.yml -p chzzk_console_verify build paper
+docker run -i -d --name chzzk-console-verify \
+  -p 25566:25565 -p 29371:29371 \
+  -e EULA=true \
+  -e MINECRAFT_WEBHOOK_SECRET='replace-with-shared-secret' \
+  -e MINECRAFT_WEBHOOK_PORT=29371 \
+  -e MINECRAFT_WEBHOOK_PATH=/chzzk/donations \
+  chzzk_console_verify-paper:latest
+```
+
+콘솔 명령은 container stdin으로 전달한다.
+
+```bash
+docker exec chzzk-console-verify sh -lc "printf '%s\n' 'version' 'plugins' 'chzzk' 'chzzk target status' > /proc/1/fd/0"
+docker logs --since=30s chzzk-console-verify
+curl -fsS http://127.0.0.1:29371/chzzk/donations/health
+docker exec chzzk-console-verify curl -fsS http://127.0.0.1:29371/chzzk/donations/health
+```
+
+secret 값은 실제 값 대신 placeholder를 사용하거나 로그에 남기지 않는다.
 
 Gradle:
 

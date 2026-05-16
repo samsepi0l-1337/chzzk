@@ -10,8 +10,8 @@ RUN ./gradlew --no-daemon :plugin:shadowJar
 
 FROM eclipse-temurin:21-jre
 
-ARG PAPER_VERSION=1.21.8
-ARG PAPER_BUILD=60
+ARG PAPER_VERSION=1.21.1
+ARG PAPER_BUILD=133
 
 WORKDIR /server
 

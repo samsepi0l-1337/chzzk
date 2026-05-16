@@ -18,6 +18,8 @@
 | `100000` | `KILL_TARGET` | target 즉사 |
 
 금액이 정확히 일치하지 않으면 `UNKNOWN_AMOUNT`가 반환되고 효과는 실행되지 않는다.
+webhook `amount`는 JSON number이며 Java `int` 범위 안의 정수여야 한다. bridge는 `payAmount`를 정규화할 때 `2,147,483,647` 초과를 거부하고, plugin도 범위를 넘거나 소수/문자열이면 `400`으로 거부한다.
+금액 tier는 `config.yml`이 아니라 `DonationTier` enum으로만 정의한다. 현재 `config.yml`의 효과 관련 설정은 `teleport.radius`뿐이다.
 
 ## DonationService 처리 순서
 
@@ -32,6 +34,8 @@
 7. runtime 예외면 `EFFECT_FAILED`.
 
 `eventId`는 효과 실행 성공 후에만 저장된다. 실패한 효과는 재시도될 수 있다.
+
+현재 `eventId`는 CHZZK 공식 payload에서 온 값이 아니라 bridge가 webhook 전송 전에 생성한 값이다. 공식 `DONATION` payload에는 안정적인 event id가 문서화되어 있지 않고, bridge의 기본 구현은 `randomUUID()`를 사용한다. 따라서 `DonationService`의 중복 방지는 같은 `eventId`를 가진 webhook 재전송만 막으며, upstream에서 동일 후원이 새 socket 메시지로 다시 전달되어 bridge가 새 UUID를 만들면 중복으로 판정할 수 없다.
 
 ## 최근 Event ID 보관
 
@@ -72,7 +76,7 @@ target availability도 `Bukkit.getPlayer` 계열 API를 사용하므로 webhook 
 - mobs: 일반 소환 entity 목록.
 - combatMobs: 전투용 entity 목록.
 
-후보를 추가할 때는 해당 Paper 버전에서 유효한 enum 값인지 확인한다. `paper-api:1.21.8-R0.1-SNAPSHOT` 기준으로 검증한다.
+후보를 추가할 때는 해당 Paper 버전에서 유효한 enum 값인지 확인한다. `paper-api:1.21.1-R0.1-SNAPSHOT` 기준으로 검증한다.
 
 ## 테스트
 
@@ -81,6 +85,8 @@ target availability도 `Bukkit.getPlayer` 계열 API를 사용하므로 webhook 
 - `plugin/src/test/java/dev/samsepiol/chzzk/donation/DonationServiceTest.java`
 - `plugin/src/test/java/dev/samsepiol/chzzk/donation/DonationTierTest.java`
 - `plugin/src/test/java/dev/samsepiol/chzzk/donation/DonationResultTest.java`
+- `plugin/src/test/java/dev/samsepiol/chzzk/webhook/DonationWebhookServerTest.java`
+- `bridge/test/donation-parser.test.ts`
 - `plugin/src/test/java/dev/samsepiol/chzzk/state/DeathCountServiceTest.java`
 - `plugin/src/test/java/dev/samsepiol/chzzk/display/SidebarLinesTest.java`
 

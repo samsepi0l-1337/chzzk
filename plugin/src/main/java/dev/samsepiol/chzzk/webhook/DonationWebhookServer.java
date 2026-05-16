@@ -1,7 +1,9 @@
 package dev.samsepiol.chzzk.webhook;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import dev.samsepiol.chzzk.donation.DonationEvent;
@@ -145,10 +147,30 @@ public final class DonationWebhookServer {
         JsonObject json = gson.fromJson(new String(body, StandardCharsets.UTF_8), JsonObject.class);
         return new DonationEvent(
                 json.get("eventId").getAsString(),
-                json.get("amount").getAsInt(),
+                amountValue(json),
                 stringValue(json, "donatorNickname"),
                 stringValue(json, "message"),
                 Instant.parse(json.get("receivedAt").getAsString()));
+    }
+
+    private static int amountValue(JsonObject json) {
+        JsonElement element = json.get("amount");
+        if (element == null || element.isJsonNull() || !element.isJsonPrimitive()) {
+            throw new IllegalArgumentException("amount must be an int");
+        }
+        JsonPrimitive primitive = element.getAsJsonPrimitive();
+        if (!primitive.isNumber()) {
+            throw new IllegalArgumentException("amount must be an int");
+        }
+        String value = primitive.getAsString();
+        if (!value.matches("-?\\d+")) {
+            throw new IllegalArgumentException("amount must be an int");
+        }
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException exception) {
+            throw new IllegalArgumentException("amount must be an int", exception);
+        }
     }
 
     private static String stringValue(JsonObject json, String name) {

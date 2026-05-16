@@ -1,11 +1,12 @@
-# CHZZK 후원 Minecraft 플러그인 + Node 브리지 계획
+# CHZZK 후원 Minecraft 플러그인 + Node 브리지 검증 요약
 
 ## Summary
 
-- `plugin/` Java 21 Paper/Spigot 플러그인과 `bridge/` Node.js TypeScript 브리지를 만든다.
-- CHZZK 후원은 Node 브리지가 Session `DONATION` 이벤트로 받고, 로컬 HMAC webhook으로 플러그인에 전달한다.
+- `plugin/` Java 21 Paper 1.21.1 플러그인과 `bridge/` Node.js TypeScript 브리지를 만든다.
+- CHZZK 후원은 Node 브리지가 Session 실시간 `DONATION` 이벤트로 받고, 로컬 HMAC webhook으로 플러그인에 전달한다.
 - 플러그인은 금액이 정확히 일치할 때만 즉시 효과를 실행한다.
 - 오른쪽 사이드바(scoreboard)에 후원 티어표와 대상 플레이어 총 사망 수를 표시한다.
+- 공식 문서에서 과거 후원 내역 REST endpoint는 확인되지 않았으므로 backfill은 지원하지 않는다.
 
 ## Key Interfaces
 
@@ -20,6 +21,7 @@
   - `POST http://127.0.0.1:29371/chzzk/donations`
   - payload: `eventId`, `amount`, `donatorNickname`, `message`, `receivedAt`
   - `X-Chzzk-Signature: sha256=<hex>`로 HMAC 검증하고 `eventId` 중복을 차단한다.
+  - `amount`는 양의 정수이며 plugin Java `int` 범위 안이어야 한다.
 - 권한:
   - `chzzkdonation.admin` 하나로 v1 관리자 명령을 보호한다.
 
@@ -39,6 +41,7 @@
   - 금액별 효과 목록과 `Deaths: N`을 보여준다.
   - 대상 플레이어가 죽을 때마다 총 사망 카운트를 1 증가시키고 파일에 저장한다.
   - 다른 scoreboard 플러그인과 충돌하면 `/chzzk sidebar off`로 끌 수 있다.
+- 효과 target은 `config.yml`이 아니라 `/chzzk target set <player>` 명령으로 지정한다.
 
 ## Test Plan
 
@@ -54,12 +57,14 @@
   - Minecraft webhook 서명과 전달 실패 retry/log
   - `npm test`, `npm run build`
 - 수동:
-  - Paper/Spigot 1.21.x 서버에서 JAR 설치
+- Paper 1.21.1 서버에서 JAR 설치
   - `/chzzk target set <player>` 후 `/chzzk simulate <amount>`로 8개 티어와 사이드바 확인
 
 ## Assumptions
 
-- 서버 기준은 Minecraft 1.21.x / Java 21이다.
-- v1은 Bukkit `plugin.yml` 기반으로 만들어 Paper/Spigot 호환을 우선한다.
+- 서버 기준은 Minecraft/Paper 1.21.1 / Java 21이다.
+- v1은 Bukkit `plugin.yml` 기반으로 만들되 Paper 1.21.1 런타임을 기준으로 검증한다.
 - 커스텀 좌표 HUD는 만들지 않고, 플러그인만으로 가능한 scoreboard 사이드바를 사용한다.
+- 공식 CHZZK 문서상 과거 후원 내역 REST endpoint는 확인되지 않는다. v1은 session 연결 이후 수신한 실시간 후원만 처리하며 backfill은 지원하지 않는다.
+- 공식 `DONATION` payload에는 안정적인 event id가 문서화되어 있지 않다. 현재 webhook `eventId`는 bridge가 생성한 중복 차단 키이며, upstream 중복 메시지까지 보장하지 않는다.
 - 참고: [CHZZK Session](https://chzzk.gitbook.io/chzzk/chzzk-api/session), [CHZZK Authorization](https://chzzk.gitbook.io/chzzk/chzzk-api/authorization), [Paper plugin.yml](https://docs.papermc.io/paper/dev/plugin-yml/), [Spigot Objective](https://hub.spigotmc.org/javadocs/bukkit/org/bukkit/scoreboard/Objective.html).

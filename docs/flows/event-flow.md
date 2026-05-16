@@ -1,6 +1,6 @@
 # Event Flow
 
-이 문서는 CHZZK 후원 이벤트가 Minecraft 효과로 실행되는 전체 흐름을 설명한다.
+이 문서는 CHZZK 실시간 후원 이벤트가 Minecraft 효과로 실행되는 전체 흐름을 설명한다.
 
 ## 정상 흐름
 
@@ -22,6 +22,12 @@
 
 CHZZK Session 구독은 OAuth 토큰 기준으로 열리며, 특정 스트리머 제한은 bridge가 수신 payload의 `channelId`를 `CHZZK_CHANNEL_ID`와 정확히 비교해 적용한다. `channelId`가 누락되거나 다르면 Minecraft webhook은 호출하지 않는다.
 
+## CHZZK API 경계
+
+공식 CHZZK 문서 기준 후원 데이터는 Session API의 실시간 `DONATION` 이벤트로 전달된다. 확인된 REST endpoint는 session 생성, session 목록 조회, 이벤트 구독/취소이며, 과거 후원 내역을 fetch하는 REST endpoint는 문서상 제공되지 않는다.
+
+따라서 이 프로젝트는 live session이 연결된 뒤 수신한 후원만 처리한다. bridge가 꺼져 있거나 session이 끊긴 동안 발생한 과거 후원은 자동 보정하지 못한다.
+
 ## Payload 계약
 
 브리지가 플러그인에 보내는 JSON:
@@ -39,9 +45,12 @@ CHZZK Session 구독은 OAuth 토큰 기준으로 열리며, 특정 스트리머
 필수 조건:
 
 - `eventId`: 중복 차단 키다. 같은 값이 재전송되면 plugin은 `DUPLICATE`를 반환한다.
-- `amount`: `DonationTier`에 정확히 일치하는 금액만 효과를 실행한다.
+- `amount`: 양의 정수이고 Java `int` 범위의 JSON number여야 한다. `DonationTier`에 정확히 일치하는 금액만 효과를 실행한다.
 - `receivedAt`: Java `Instant.parse`가 가능한 ISO 문자열이어야 한다.
 - header: `X-Chzzk-Signature: sha256=<hex>` 형식이어야 한다.
+
+공식 `DONATION` payload에는 안정적인 event id 필드가 문서화되어 있지 않다. 현재 bridge는 `normalizeDonation`에서 `randomUUID()`로 webhook용 `eventId`를 생성한다. 이 값은 같은 webhook payload가 재전송될 때만 중복 차단에 유효하며, CHZZK upstream이 동일한 후원 이벤트를 새 socket 메시지로 다시 보내면 bridge가 새 UUID를 만들기 때문에 plugin은 중복으로 판단할 수 없다.
+payload 세부 계약은 [webhook-protocol.md](../bridge/webhook-protocol.md)를 따른다.
 
 ## 상태 코드 의미
 

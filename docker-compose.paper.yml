@@ -3,6 +3,9 @@ services:
     build:
       context: .
       dockerfile: docker/paper.Dockerfile
+      args:
+        PAPER_VERSION: "1.21.1"
+        PAPER_BUILD: "133"
     environment:
       EULA: ${EULA:?EULA=true is required after accepting the Minecraft EULA}
       MINECRAFT_WEBHOOK_SECRET: ${MINECRAFT_WEBHOOK_SECRET:?MINECRAFT_WEBHOOK_SECRET is required}

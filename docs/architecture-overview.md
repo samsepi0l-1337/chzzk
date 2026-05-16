@@ -1,15 +1,15 @@
 # Architecture Overview
 
-이 저장소는 CHZZK 후원 이벤트를 Minecraft Paper 서버의 게임 효과로 변환한다. 런타임은 두 프로세스로 나뉜다.
+이 저장소는 CHZZK 실시간 후원 이벤트를 Minecraft Paper 서버의 게임 효과로 변환한다. 런타임은 두 프로세스로 나뉜다.
 
-- `bridge/`: Node.js TypeScript 프로세스. CHZZK OpenAPI 인증을 갱신하고 Session Socket.IO 이벤트를 수신한다.
+- `bridge/`: Node.js TypeScript 프로세스. CHZZK OpenAPI 인증을 갱신하고 Session Socket.IO 실시간 이벤트를 수신한다.
 - `plugin/`: Java 21 Paper 플러그인. 로컬 HTTP webhook을 열고, HMAC 검증 후 Minecraft 메인 스레드에서 효과를 실행한다.
 
 ## 시스템 경계
 
 ```mermaid
 flowchart LR
-    CHZZK["CHZZK OpenAPI / Session"] --> Bridge["bridge Node process"]
+    CHZZK["CHZZK OpenAPI / Session\nreal-time DONATION"] --> Bridge["bridge Node process"]
     Bridge -->|"POST /chzzk/donations\nX-Chzzk-Signature"| PluginWebhook["plugin webhook server"]
     PluginWebhook --> DonationService["DonationService"]
     DonationService --> Effects["DonationEffectExecutor"]
@@ -17,6 +17,20 @@ flowchart LR
     DonationService --> State["state.json"]
     State --> Sidebar["scoreboard sidebar"]
 ```
+
+## 검증된 단계별 흐름
+
+이 저장소의 Minecraft 런타임 기준은 Paper 1.21.1 / Java 21이다. 자동 검증은 credential이 필요한 실제 CHZZK live smoke를 제외하고, 다음 입력→처리→출력 경계를 단위 테스트와 coverage로 확인한다.
+
+1. OAuth/토큰: refresh token 또는 token store 입력 → CHZZK token API 호출과 저장 → access token.
+2. Session: access token 입력 → session auth URL 생성, Socket.IO 연결, donation subscribe → 실시간 `DONATION` 수신.
+3. channelId 필터: `DONATION.channelId` 입력 → `CHZZK_CHANNEL_ID`와 정확 비교 → 일치 이벤트만 webhook 전달.
+4. DONATION 파싱: CHZZK `payAmount` 문자열 입력 → 양의 Java `int` 범위 정수 `amount` 변환 → Minecraft payload.
+5. Webhook 전송: payload 입력 → raw JSON HMAC-SHA256 서명 → plugin HTTP POST.
+6. Plugin webhook 수신: POST body/signature 입력 → HMAC, JSON, `amount` int 검증 → `DonationEvent`.
+7. DonationService: `DonationEvent` 입력 → dedupe, tier exact match, target availability → `DonationResult`.
+8. Effect 실행: accepted tier 입력 → Bukkit main thread scheduling → 8개 tier 효과 실행.
+9. 배포/설정: Docker/env/config 입력 → shared secret 일치와 내부 webhook 네트워크 → Paper/bridge 기동.
 
 ## 루트 영역
 
@@ -51,11 +65,13 @@ flowchart LR
 
 `bridge/`는 CHZZK와 플러그인 사이의 외부 연동 책임만 가진다.
 
+공식 CHZZK 문서에서 후원은 Session API의 실시간 `DONATION` 이벤트 구독으로 제공된다. 확인된 REST endpoint는 session 생성, session 목록 조회, 이벤트 구독/취소이며, 과거 후원 내역을 조회하는 REST endpoint는 문서상 제공되지 않는다. 따라서 이 아키텍처는 놓친 과거 후원을 backfill하지 않고, live session에 도착한 실시간 이벤트만 처리한다. 세부 계약은 [chzzk-auth-and-session.md](bridge/chzzk-auth-and-session.md)를 따른다.
+
 - `config.ts`: 환경 변수 로딩과 기본값.
 - `chzzk-auth.ts`: refresh token / authorization code 교환.
 - `token-store.ts`: 토큰 JSON 파일 저장.
 - `auth-cli.ts`: 토큰 저장을 위한 CLI 진입점.
-- `chzzk-session.ts`: CHZZK Session URL 생성, donation subscribe, Socket.IO 이벤트 수신.
+- `chzzk-session.ts`: CHZZK Session URL 생성, donation subscribe, Socket.IO 실시간 이벤트 수신.
 - `donation-parser.ts`: CHZZK donation payload를 Minecraft webhook payload로 정규화.
 - `webhook-client.ts`: HMAC 서명, plugin webhook 전송, retry, readiness wait.
 - `src/types/socket.io-client.d.ts`: `socket.io-client@2.0.3`용 로컬 타입 선언.
