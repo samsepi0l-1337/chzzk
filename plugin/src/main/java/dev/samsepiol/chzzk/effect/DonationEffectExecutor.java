@@ -39,8 +39,8 @@ public final class DonationEffectExecutor implements Consumer<DonationTier> {
             case RANDOM_BUFF -> applyRandomBuff(target);
             case RANDOM_ITEM -> giveRandomItem(target);
             case RANDOM_MOB -> spawn(target, pick(RandomPools.mobs()));
-            case COMBAT_MOB -> spawn(target, pick(RandomPools.combatMobs()));
-            case THREE_COMBAT_MOBS -> repeat(3, () -> spawn(target, pick(RandomPools.combatMobs())));
+            case COMBAT_MOB -> spawn(target, pickCombatMob());
+            case THREE_COMBAT_MOBS -> repeat(3, () -> spawn(target, pickCombatMob()));
             case TNT -> spawnTnt(target);
             case RANDOM_TELEPORT -> teleportRandomly(target);
             case KILL_TARGET -> kill(target);
@@ -65,6 +65,17 @@ public final class DonationEffectExecutor implements Consumer<DonationTier> {
         world.spawnEntity(target.getLocation(), type);
     }
 
+    private EntityType pickCombatMob() {
+        return pickCombatMob(random);
+    }
+
+    static EntityType pickCombatMob(Random random) {
+        if (random.nextInt(100) == 0) {
+            return EntityType.WITHER;
+        }
+        return pick(RandomPools.combatMobs(), random);
+    }
+
     private void spawnTnt(Player target) {
         target.getWorld().spawn(target.getLocation(), TNTPrimed.class);
     }
@@ -85,6 +96,10 @@ public final class DonationEffectExecutor implements Consumer<DonationTier> {
     }
 
     private <T> T pick(java.util.List<T> values) {
+        return values.get(random.nextInt(values.size()));
+    }
+
+    private static <T> T pick(java.util.List<T> values, Random random) {
         return values.get(random.nextInt(values.size()));
     }
 

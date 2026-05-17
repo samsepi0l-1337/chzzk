@@ -61,7 +61,7 @@
 - 공식 `DONATION` payload에 안정 event id가 없어 bridge가 webhook `eventId`를 생성한다. upstream이 동일 후원을 재전달하면 plugin dedupe가 막지 못할 수 있다.
 - 마인크래프트에서 후원 효과를 받을 플레이어는 `config.yml`이 아니라 게임 내 `/chzzk target set <플레이어>`로 지정한다.
 - bridge 기동에는 token store(예: `.chzzk-tokens.json`) 또는 `CHZZK_REFRESH_TOKEN`이 필요하다. 둘 다 없으면 bridge가 즉시 종료한다.
-- Docker로 bridge 이미지를 빌드할 때 `bridge/package.json`과 `bridge/package-lock.json`이 불일치하면 `npm ci` 단계에서 실패한다.
 - 로컬(non-Docker) 기동 순서는 Paper(webhook 포트 29371 준비) → bridge이다.
-- 저장소 루트에는 Unix `gradlew`만 포함되고 `gradlew.bat`은 없다. Windows에서는 Git Bash의 `./gradlew` 또는 시스템 `gradle`을 쓴다.
 - `MINECRAFT_WEBHOOK_SECRET`(bridge env)과 플러그인 `config.yml`의 `webhook.shared-secret`은 동일 값이어야 한다.
+- Naver/CHZZK Developers «로그인 리디렉션 URL»(OAuth `redirectUri`)과 bridge `MINECRAFT_WEBHOOK_URL`(Paper `:29371/chzzk/donations`)은 별개이다. `redirectUri`는 OAuth `code`/`state` 수신용이고 webhook은 Developers에 등록하지 않는다. 이 저장소는 OAuth 리디렉션 HTTP 서버를 포함하지 않는다.
+- AWS/EC2 운영: 인터넷 공개는 SSH·Minecraft `25565/tcp`뿐이고 plugin webhook `29371`은 Docker 내부(`http://paper:29371/...`) 전용이며 security group에 열지 않는다. EC2 bridge는 로컬에서 발급한 `CHZZK_REFRESH_TOKEN` 또는 volume `.chzzk-tokens.json` bootstrap을 권장한다(공개 OAuth 콜백 미포함).
