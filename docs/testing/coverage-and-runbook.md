@@ -34,11 +34,16 @@ npm run build
 
 coverage 대상:
 
+- `src/auth-login-cli.ts`
+- `src/auth-url-cli.ts`
 - `src/chzzk-auth.ts`
+- `src/chzzk-oauth.ts`
 - `src/chzzk-session.ts`
 - `src/config.ts`
 - `src/donation-parser.ts`
+- `src/load-env-file.ts`
 - `src/index.ts`
+- `src/oauth-callback-server.ts`
 - `src/token-store.ts`
 - `src/webhook-client.ts`
 
@@ -81,12 +86,17 @@ plugin:
 
 bridge:
 
+- `bridge/test/auth-login-cli.test.ts`
+- `bridge/test/auth-url-cli.test.ts`
+- `bridge/test/chzzk-oauth.test.ts`
 - `bridge/test/chzzk-auth.test.ts`
 - `bridge/test/chzzk-session.test.ts`
 - `bridge/test/config.test.ts`
 - `bridge/test/donation-parser.test.ts`
 - `bridge/test/docker-runtime.test.ts`
 - `bridge/test/index.test.ts`
+- `bridge/test/load-env-file.test.ts`
+- `bridge/test/oauth-callback-server.test.ts`
 - `bridge/test/token-store.test.ts`
 - `bridge/test/webhook-client.test.ts`
 
@@ -95,6 +105,7 @@ bridge:
 | 변경 영역 | 최소 검증 |
 | --- | --- |
 | `bridge/src/config.ts` | `npm --prefix bridge run coverage`, `npm --prefix bridge run build` |
+| `bridge/src/auth-login-cli.ts`, `bridge/src/auth-url-cli.ts`, `bridge/src/chzzk-oauth.ts`, `bridge/src/load-env-file.ts`, `bridge/src/oauth-callback-server.ts` | `npm --prefix bridge run coverage`, `npm --prefix bridge run build` |
 | `bridge/src/chzzk-auth.ts` | `npm --prefix bridge run coverage`, `npm --prefix bridge run build` |
 | `bridge/src/chzzk-session.ts` | `npm --prefix bridge run coverage`, `npm --prefix bridge run build` |
 | `bridge/src/index.ts` | `npm --prefix bridge run coverage`, `npm --prefix bridge run build` |

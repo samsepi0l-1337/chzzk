@@ -8,6 +8,6 @@
     "docker:paper:build": "docker compose -f docker-compose.paper.yml build",
     "docker:paper:up": "docker compose -f docker-compose.paper.yml up --build",
     "auth:url": "npm --prefix bridge run auth:url -- --env-file .env",
-    "auth:exchange": "./scripts/chzzk-oauth.sh exchange"
+    "auth:login": "npm --prefix bridge run auth:login -- --env-file .env"
   }
 }

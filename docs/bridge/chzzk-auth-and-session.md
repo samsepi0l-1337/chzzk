@@ -63,6 +63,22 @@ Docker volume bootstrap:
 docker compose -f docker-compose.yml run --rm bridge npm run auth -- --refresh-token "$CHZZK_REFRESH_TOKEN"
 ```
 
+## OAuth login
+
+새 OAuth 로그인 경로는 local npm 실행용이다.
+
+- `npm run auth:url`은 CHZZK authorization URL과 `state`를 출력한다.
+- `npm run auth:login`은 `CHZZK_REDIRECT_URI`로 local callback server를 열고, callback `code`를 token으로 교환한 뒤 `TokenStore.save`로 저장한다.
+- 두 CLI 모두 `--env-file <path>`를 지원한다.
+- 기본 redirect URI는 `http://127.0.0.1:8080/chzzk/oauth/callback`이다. 이 값과 같은 `redirectUri`를 CHZZK Developers에 등록해야 한다.
+
+예:
+
+```bash
+npm run auth:url -- --env-file .env
+npm run auth:login -- --env-file .env
+```
+
 ## Auth CLI
 
 진입점: `bridge/src/auth-cli.ts`
@@ -161,6 +177,7 @@ CHZZK Session 구독 API는 channel ID를 query/body로 받지 않는다. 대상
 ## 변경 시 체크리스트
 
 - auth 응답 shape을 바꾸면 `chzzk-auth.test.ts`를 갱신한다.
+- OAuth login/callback 흐름을 바꾸면 `chzzk-oauth.test.ts`, `oauth-callback-server.test.ts`, `auth-url-cli.test.ts`, `auth-login-cli.test.ts`를 갱신한다.
 - session 메시지 shape을 바꾸면 `chzzk-session.test.ts`를 갱신한다.
 - token 저장 형식을 바꾸면 migration 또는 호환 로딩을 고려한다.
 - Socket.IO major version을 바꾸면 CHZZK 공식 지원 범위와 로컬 type 선언을 함께 재검토한다.

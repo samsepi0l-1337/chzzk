@@ -19,16 +19,21 @@ import org.bukkit.potion.PotionEffect;
 public final class DonationEffectExecutor implements Consumer<DonationTier> {
     private final TargetService targetService;
     private final Set<UUID> pluginKills = ConcurrentHashMap.newKeySet();
-    private final Random random = new Random();
+    private final Random random;
     private final int teleportRadius;
 
     public DonationEffectExecutor(TargetService targetService) {
-        this(targetService, 64);
+        this(targetService, 64, new Random());
     }
 
     public DonationEffectExecutor(TargetService targetService, int teleportRadius) {
+        this(targetService, teleportRadius, new Random());
+    }
+
+    DonationEffectExecutor(TargetService targetService, int teleportRadius, Random random) {
         this.targetService = targetService;
         this.teleportRadius = Math.max(0, teleportRadius);
+        this.random = random;
     }
 
     @Override
@@ -77,7 +82,20 @@ public final class DonationEffectExecutor implements Consumer<DonationTier> {
     }
 
     private void spawnTnt(Player target) {
-        target.getWorld().spawn(target.getLocation(), TNTPrimed.class);
+        repeat(
+                pickTntSpawnCount(random),
+                () -> target.getWorld().spawn(target.getLocation(), TNTPrimed.class));
+    }
+
+    static int pickTntSpawnCount(Random random) {
+        int roll = random.nextInt(100);
+        if (roll < 90) {
+            return 3;
+        }
+        if (roll < 99) {
+            return 4;
+        }
+        return 5;
     }
 
     private void teleportRandomly(Player target) {

@@ -8,11 +8,18 @@ interface ChzzkAuthConfig {
   baseUrl: string;
 }
 
-export interface BridgeConfig {
+export interface BridgeAuthConfig {
+  chzzk: ChzzkAuthConfig;
+  oauth: {
+    redirectUri: string;
+  };
+  tokenStorePath: string;
+}
+
+export interface BridgeConfig extends BridgeAuthConfig {
   chzzk: ChzzkAuthConfig & {
     targetChannelId: string;
   };
-  tokenStorePath: string;
   minecraftWebhook: {
     url: string;
     healthUrl: string;
@@ -24,17 +31,15 @@ export interface BridgeConfig {
   };
 }
 
-export interface BridgeAuthConfig {
-  chzzk: ChzzkAuthConfig;
-  tokenStorePath: string;
-}
-
 export function loadBridgeAuthConfig(env: NodeJS.ProcessEnv = process.env): BridgeAuthConfig {
   return {
     chzzk: {
       clientId: required(env.CHZZK_CLIENT_ID, "CHZZK_CLIENT_ID"),
       clientSecret: required(env.CHZZK_CLIENT_SECRET, "CHZZK_CLIENT_SECRET"),
       baseUrl: env.CHZZK_OPENAPI_BASE_URL ?? CHZZK_OPENAPI_BASE_URL
+    },
+    oauth: {
+      redirectUri: env.CHZZK_REDIRECT_URI ?? "http://127.0.0.1:8080/chzzk/oauth/callback"
     },
     tokenStorePath: resolve(env.CHZZK_TOKEN_STORE ?? ".chzzk-tokens.json")
   };

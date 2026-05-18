@@ -63,5 +63,5 @@
 - bridge 기동에는 token store(예: `.chzzk-tokens.json`) 또는 `CHZZK_REFRESH_TOKEN`이 필요하다. 둘 다 없으면 bridge가 즉시 종료한다.
 - 로컬(non-Docker) 기동 순서는 Paper(webhook 포트 29371 준비) → bridge이다.
 - `MINECRAFT_WEBHOOK_SECRET`(bridge env)과 플러그인 `config.yml`의 `webhook.shared-secret`은 동일 값이어야 한다.
-- Naver/CHZZK Developers «로그인 리디렉션 URL»(OAuth `redirectUri`)과 bridge `MINECRAFT_WEBHOOK_URL`(Paper `:29371/chzzk/donations`)은 별개이다. `redirectUri`는 OAuth `code`/`state` 수신용이고 webhook은 Developers에 등록하지 않는다. 이 저장소는 OAuth 리디렉션 HTTP 서버를 포함하지 않는다.
+- Naver/CHZZK Developers «로그인 리디렉션 URL»(OAuth `redirectUri`)과 bridge `MINECRAFT_WEBHOOK_URL`(Paper `:29371/chzzk/donations`)은 별개이다. `redirectUri`는 OAuth `code`/`state` 수신용이고, `auth:login`은 기본값 `http://127.0.0.1:8080/chzzk/oauth/callback`의 로컬 callback server를 띄운다. webhook은 Developers에 등록하지 않는다.
 - AWS/EC2 운영: 인터넷 공개는 SSH·Minecraft `25565/tcp`뿐이고 plugin webhook `29371`은 Docker 내부(`http://paper:29371/...`) 전용이며 security group에 열지 않는다. EC2 bridge는 로컬에서 발급한 `CHZZK_REFRESH_TOKEN` 또는 volume `.chzzk-tokens.json` bootstrap을 권장한다(공개 OAuth 콜백 미포함).

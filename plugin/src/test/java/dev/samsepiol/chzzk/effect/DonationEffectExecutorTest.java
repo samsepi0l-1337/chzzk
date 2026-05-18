@@ -19,6 +19,15 @@ final class DonationEffectExecutorTest {
         assertEquals(EntityType.EVOKER, DonationEffectExecutor.pickCombatMob(new FixedRandom(1, 3)));
     }
 
+    @Test
+    void pickTntSpawnCountUsesWeightedRollBoundaries() {
+        assertEquals(3, DonationEffectExecutor.pickTntSpawnCount(new FixedRandom(0)));
+        assertEquals(3, DonationEffectExecutor.pickTntSpawnCount(new FixedRandom(89)));
+        assertEquals(4, DonationEffectExecutor.pickTntSpawnCount(new FixedRandom(90)));
+        assertEquals(4, DonationEffectExecutor.pickTntSpawnCount(new FixedRandom(98)));
+        assertEquals(5, DonationEffectExecutor.pickTntSpawnCount(new FixedRandom(99)));
+    }
+
     private static final class FixedRandom extends Random {
         private final Deque<Integer> values;
 
