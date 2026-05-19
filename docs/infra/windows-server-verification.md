@@ -122,6 +122,37 @@ npm run start
 
 `bridge/src/config.ts`는 `.env`를 자동 로드하지 않는다. Docker 없이 실행할 때는 위처럼 PowerShell/CMD 프로세스 환경 변수로 직접 넣는다.
 
+### 4. Tailscale 원격 접속
+
+Windows 서버를 Mac에서 RDP 없이 붙을 때의 기준이다.
+
+1. Windows 서버에 Tailscale을 설치하고 로그인한다.
+2. `tailscale status`와 `tailscale ip -4`로 tailnet 상태와 IPv4를 확인한다.
+3. MagicDNS를 켠 경우에는 `서버명.tailnet명.ts.net`을, 아니면 `tailscale ip -4` 결과를 쓴다.
+4. Windows 방화벽은 `25565/tcp`만 Tailscale 대역에서 허용하고, `29371/tcp`는 열지 않는다. `29371`은 같은 호스트의 Paper-bridge 사이에서만 쓴다.
+5. Mac도 Tailscale에 로그인한 뒤 Minecraft 클라이언트에서 `<windows-tailscale-ip>:25565` 또는 MagicDNS 호스트로 접속한다.
+
+PowerShell 예시:
+
+```powershell
+winget install --id Tailscale.Tailscale -e
+tailscale up
+tailscale status
+tailscale ip -4
+
+New-NetFirewallRule -DisplayName "Minecraft 25565 over Tailscale IPv4" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 25565 -RemoteAddress 100.64.0.0/10
+New-NetFirewallRule -DisplayName "Minecraft 25565 over Tailscale IPv6" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 25565 -RemoteAddress fd7a:115c:a1e0::/48
+```
+
+Mac에서 Tailscale이 아직 없으면:
+
+```bash
+brew install tailscale
+tailscale up
+```
+
+이후 Minecraft에서 `<windows-tailscale-ip>:25565`로 접속한다.
+
 ## 사전 자동 검증
 
 저장소 루트에서 실행한다.

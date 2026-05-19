@@ -24,6 +24,8 @@ final class PluginStateStoreTest {
         assertNull(store.targetUuid());
         assertNull(store.targetName());
         assertTrue(store.sidebarEnabled());
+        assertTrue(store.sidebarDonationsEnabled());
+        assertTrue(store.sidebarDeathsEnabled());
         assertEquals(0, store.deathCount());
         assertTrue(store.recentEventIds().isEmpty());
     }
@@ -35,6 +37,8 @@ final class PluginStateStoreTest {
 
         store.setTarget("uuid", "player");
         store.setSidebarEnabled(false);
+        store.setSidebarDonationsEnabled(false);
+        store.setSidebarDeathsEnabled(true);
         store.setDeathCount(4);
         store.recentEventIds().add("evt-1");
         store.save();
@@ -43,6 +47,8 @@ final class PluginStateStoreTest {
         assertEquals("uuid", reloaded.targetUuid());
         assertEquals("player", reloaded.targetName());
         assertFalse(reloaded.sidebarEnabled());
+        assertFalse(reloaded.sidebarDonationsEnabled());
+        assertTrue(reloaded.sidebarDeathsEnabled());
         assertEquals(4, reloaded.deathCount());
         assertEquals(java.util.Set.of("evt-1"), reloaded.recentEventIds());
 
@@ -67,6 +73,37 @@ final class PluginStateStoreTest {
         assertEquals("uuid", store.targetUuid());
         assertTrue(store.sidebarEnabled());
         assertTrue(store.recentEventIds().isEmpty());
+    }
+
+    @Test
+    void defaultsSidebarSectionsToEnabledWhenMissingFromStateFile() throws IOException {
+        Path path = tempDir.resolve("legacy-sidebar.json");
+        Files.writeString(path, "{\"sidebarEnabled\":true}");
+
+        PluginStateStore store = new PluginStateStore(path);
+
+        assertTrue(store.sidebarDonationsEnabled());
+        assertTrue(store.sidebarDeathsEnabled());
+    }
+
+    @Test
+    void persistsSidebarSectionTogglesIndependently() {
+        Path path = tempDir.resolve("sidebar-sections.json");
+        PluginStateStore store = new PluginStateStore(path);
+
+        store.setSidebarDonationsEnabled(false);
+        store.setSidebarDeathsEnabled(false);
+
+        PluginStateStore reloaded = new PluginStateStore(path);
+        assertFalse(reloaded.sidebarDonationsEnabled());
+        assertFalse(reloaded.sidebarDeathsEnabled());
+
+        store.setSidebarDeathsEnabled(true);
+        assertFalse(new PluginStateStore(path).sidebarDonationsEnabled());
+        assertTrue(new PluginStateStore(path).sidebarDeathsEnabled());
+
+        store.setSidebarDonationsEnabled(true);
+        assertTrue(store.sidebarDonationsEnabled());
     }
 
     @Test

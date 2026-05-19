@@ -13,13 +13,13 @@
 | `3000`   | `RANDOM_MOB`        | 랜덤 몹 1마리 소환               |
 | `5000`   | `COMBAT_MOB`        | 전투용 몹 1마리 소환             |
 | `10000`  | `THREE_COMBAT_MOBS` | 전투용 몹 3마리 소환             |
-| `30000`  | `TNT`               | target 위치에 TNT 3/4/5개 소환 (90%/9%/1%) |
-| `50000`  | `RANDOM_TELEPORT`   | 설정 radius 안에서 랜덤 teleport |
+| `30000`  | `TNT`               | target 위치에 TNT 1개 소환, 폭발 시 target 반경 3블록 안에 TNT 5개 후속 소환 |
+| `50000`  | `RANDOM_TELEPORT`   | world border 안 랜덤 X/Z·Y teleport |
 | `100000` | `KILL_TARGET`       | target 즉사                      |
 
 금액이 정확히 일치하지 않으면 `UNKNOWN_AMOUNT`가 반환되고 효과는 실행되지 않는다.
 webhook `amount`는 JSON number이며 Java `int` 범위 안의 정수여야 한다. bridge는 `payAmount`를 정규화할 때 `2,147,483,647` 초과를 거부하고, plugin도 범위를 넘거나 소수/문자열이면 `400`으로 거부한다.
-금액 tier는 `config.yml`이 아니라 `DonationTier` enum으로만 정의한다. 현재 `config.yml`의 효과 관련 설정은 `teleport.radius`뿐이다.
+금액 tier는 `config.yml`이 아니라 `DonationTier` enum으로만 정의한다. 현재 `config.yml`에는 효과별 runtime 설정이 없다.
 
 ## DonationService 처리 순서
 
@@ -48,10 +48,10 @@ webhook `amount`는 JSON number이며 Java `int` 범위 안의 정수여야 한�
 `DonationEffectExecutor`는 `Consumer<DonationTier>`다.
 
 - target은 `TargetService.onlineTarget()`에서 가져온다.
-- `teleport.radius`는 음수 입력을 `0`으로 보정한다.
+- `RANDOM_TELEPORT`는 world border 안에서 X·Z·Y를 각각 랜덤으로 고른 뒤 최대 32번 시도한다. 발·머리 칸이 비고(공기·물·용암 등), 발 아래가 solid이거나 발이 물/용암이면 허용한다. 공중 부유·블록 속 파묻힘만 거부하며, 용암·동굴·물은 허용한다. 원거리 offset·`getHighestBlockYAt`은 쓰지 않는다.
 - 랜덤 선택은 `RandomPools` 값에서 `Random`으로 선택한다.
 - `COMBAT_MOB`와 `THREE_COMBAT_MOBS`는 각 소환마다 1% 확률로 `WITHER`를 뽑고, 실패하면 `RandomPools.combatMobs()`에서 무작위로 선택한다.
-- `TNT`는 90%/9%/1% 가중치로 TNT 3/4/5개를 target 위치에 소환한다.
+- `TNT`는 최초 TNT 1개를 target 위치에 소환하고 UUID를 추적한다. 그 TNT가 폭발하면 `DonationTntListener`가 현재 온라인 target 기준 반경 3블록 안에 TNT 5개를 후속 소환한다. 후속 TNT는 추적하지 않으므로 다시 chain되지 않는다.
 - `KILL_TARGET`은 player UUID를 `pluginKills`에 기록하고 `setHealth(0.0)`을 호출한다.
 
 Paper API를 호출하므로 반드시 서버 메인 스레드에서 실행되어야 한다. webhook에서 직접 호출하지 말고 `ChzzkDonationPlugin.syncRunner` 경로를 유지한다.

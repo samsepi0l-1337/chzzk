@@ -31,6 +31,14 @@ public final class PluginStateStore {
         return state.sidebarEnabled;
     }
 
+    public boolean sidebarDonationsEnabled() {
+        return state.sidebarDonationsEnabled == null || state.sidebarDonationsEnabled;
+    }
+
+    public boolean sidebarDeathsEnabled() {
+        return state.sidebarDeathsEnabled == null || state.sidebarDeathsEnabled;
+    }
+
     public int deathCount() {
         return state.deathCount;
     }
@@ -53,6 +61,16 @@ public final class PluginStateStore {
 
     public void setSidebarEnabled(boolean enabled) {
         state.sidebarEnabled = enabled;
+        save();
+    }
+
+    public void setSidebarDonationsEnabled(boolean enabled) {
+        state.sidebarDonationsEnabled = enabled;
+        save();
+    }
+
+    public void setSidebarDeathsEnabled(boolean enabled) {
+        state.sidebarDeathsEnabled = enabled;
         save();
     }
 
@@ -86,6 +104,8 @@ public final class PluginStateStore {
         private String targetUuid;
         private String targetName;
         private boolean sidebarEnabled = true;
+        private Boolean sidebarDonationsEnabled;
+        private Boolean sidebarDeathsEnabled;
         private int deathCount;
         private Set<String> recentEventIds = new LinkedHashSet<>();
 

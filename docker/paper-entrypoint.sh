@@ -28,8 +28,6 @@ webhook:
 $(sed 's/^/    /' "$secret_file")
 sidebar:
   enabled: true
-teleport:
-  radius: 64
 EOF
 rm -f "$secret_file"
 

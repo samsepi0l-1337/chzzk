@@ -1,14 +1,15 @@
 package dev.samsepiol.chzzk.display;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.samsepiol.chzzk.donation.DonationTier;
 import org.junit.jupiter.api.Test;
 
 final class SidebarLinesTest {
     @Test
-    void includesEveryTierAndDeathCount() {
-        var lines = SidebarLines.build(7);
+    void includesEveryTierAndDeathCountWhenBothSectionsEnabled() {
+        var lines = SidebarLines.build(7, true, true);
 
         assertEquals(DonationTier.values().length + 1, lines.size());
         assertEquals("1,000: 랜덤 버프", lines.get(0));
@@ -20,5 +21,26 @@ final class SidebarLinesTest {
         assertEquals("50,000: 랜덤 TP", lines.get(6));
         assertEquals("100,000: 즉사", lines.get(7));
         assertEquals("Deaths: 7", lines.get(8));
+    }
+
+    @Test
+    void includesOnlyDonationsWhenDeathsDisabled() {
+        var lines = SidebarLines.build(7, true, false);
+
+        assertEquals(DonationTier.values().length, lines.size());
+        assertEquals("100,000: 즉사", lines.get(DonationTier.values().length - 1));
+    }
+
+    @Test
+    void includesOnlyDeathsWhenDonationsDisabled() {
+        var lines = SidebarLines.build(7, false, true);
+
+        assertEquals(1, lines.size());
+        assertEquals("Deaths: 7", lines.get(0));
+    }
+
+    @Test
+    void returnsEmptyWhenBothSectionsDisabled() {
+        assertTrue(SidebarLines.build(7, false, false).isEmpty());
     }
 }

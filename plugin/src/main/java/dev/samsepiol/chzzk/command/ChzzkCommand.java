@@ -39,6 +39,7 @@ public final class ChzzkCommand implements TabExecutor {
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (args.length == 0) {
             sender.sendMessage("/chzzk <target|sidebar|deaths|simulate|reload>");
+            sender.sendMessage("/chzzk sidebar <on|off|donations|deaths> [on|off]");
             return true;
         }
         switch (args[0]) {
@@ -64,6 +65,10 @@ public final class ChzzkCommand implements TabExecutor {
             return List.of("set", "clear", "status");
         }
         if (args.length == 2 && "sidebar".equals(args[0])) {
+            return List.of("on", "off", "donations", "deaths");
+        }
+        if (args.length == 3 && "sidebar".equals(args[0])
+                && ("donations".equals(args[1]) || "deaths".equals(args[1]))) {
             return List.of("on", "off");
         }
         if (args.length == 2 && "deaths".equals(args[0])) {
@@ -89,16 +94,40 @@ public final class ChzzkCommand implements TabExecutor {
 
     private void handleSidebar(CommandSender sender, String[] args) {
         if (args.length < 2) {
-            sender.sendMessage("/chzzk sidebar <on|off>");
+            sender.sendMessage("/chzzk sidebar <on|off|donations|deaths> [on|off]");
             return;
         }
-        Optional<Boolean> enabled = parseSidebarEnabled(args[1]);
+        String section = args[1];
+        if ("donations".equals(section) || "deaths".equals(section)) {
+            handleSidebarSection(sender, section, args);
+            return;
+        }
+        Optional<Boolean> enabled = parseSidebarEnabled(section);
         if (enabled.isEmpty()) {
-            sender.sendMessage("/chzzk sidebar <on|off>");
+            sender.sendMessage("/chzzk sidebar <on|off|donations|deaths> [on|off]");
             return;
         }
         sidebarService.setEnabled(enabled.get());
         sender.sendMessage("Sidebar " + (enabled.get() ? "enabled." : "disabled."));
+    }
+
+    private void handleSidebarSection(CommandSender sender, String section, String[] args) {
+        if (args.length < 3) {
+            sender.sendMessage("/chzzk sidebar " + section + " <on|off>");
+            return;
+        }
+        Optional<Boolean> enabled = parseSidebarEnabled(args[2]);
+        if (enabled.isEmpty()) {
+            sender.sendMessage("/chzzk sidebar " + section + " <on|off>");
+            return;
+        }
+        if ("donations".equals(section)) {
+            sidebarService.setDonationsEnabled(enabled.get());
+            sender.sendMessage("Sidebar donations " + (enabled.get() ? "enabled." : "disabled."));
+            return;
+        }
+        sidebarService.setDeathsEnabled(enabled.get());
+        sender.sendMessage("Sidebar deaths " + (enabled.get() ? "enabled." : "disabled."));
     }
 
     private void handleDeaths(CommandSender sender, String[] args) {

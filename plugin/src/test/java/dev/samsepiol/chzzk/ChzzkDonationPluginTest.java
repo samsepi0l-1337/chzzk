@@ -83,4 +83,5 @@ final class ChzzkDonationPluginTest {
             Thread.interrupted();
         }
     }
+
 }

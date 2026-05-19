@@ -48,7 +48,7 @@ public final class RandomPools {
                 EntityType.ZOMBIE,
                 EntityType.SKELETON,
                 EntityType.CREEPER,
-                EntityType.EVOKER,
+                EntityType.SPIDER,
                 EntityType.WITCH,
                 EntityType.GHAST);
     }

@@ -18,14 +18,11 @@ webhook:
   shared-secret: "change-me"
 sidebar:
   enabled: true
-teleport:
-  radius: 64
 ```
 
 사용 지점:
 
 - `webhook.host`, `webhook.port`, `webhook.path`, `webhook.shared-secret`: `ChzzkDonationPlugin.startWebhook`.
-- `teleport.radius`: `DonationEffectExecutor`.
 - `sidebar.enabled`: 현재 기본 config에는 있지만 runtime sidebar 상태는 `PluginStateStore`의 `sidebarEnabled`를 사용한다.
 
 config key를 추가하거나 의미를 바꾸면 `config.yml`, Docker entrypoint config 생성, 테스트, 문서를 함께 수정한다.
@@ -42,7 +39,6 @@ Docker config는 다음 값을 runtime 환경 변수로 받는다.
 - `MINECRAFT_WEBHOOK_PATH`
 
 Docker 실행에서는 webhook host가 `0.0.0.0`으로 설정된다. 기본 resource config는 로컬 단독 실행을 위해 `127.0.0.1`을 사용한다.
-
 ## Runtime State
 
 상태 파일:
@@ -57,6 +53,8 @@ Docker 실행에서는 webhook host가 `0.0.0.0`으로 설정된다. 기본 reso
 | `targetUuid` | target이 UUID로 확인되었을 때 저장되는 UUID 문자열 |
 | `targetName` | target 표시 이름 또는 이름 기반 target |
 | `sidebarEnabled` | sidebar on/off 상태 |
+| `sidebarDonationsEnabled` | 후원 tier 라인 표시 여부 (기본 on, state 파일에 없으면 on) |
+| `sidebarDeathsEnabled` | 사망 수 라인 표시 여부 (기본 on, state 파일에 없으면 on) |
 | `deathCount` | target 누적 사망 수 |
 | `recentEventIds` | 중복 webhook event ID 차단용 최근 ID 집합 |
 
@@ -101,7 +99,8 @@ target 플레이어가 사망하면 count를 증가시키고 sidebar를 갱신�
 - `/chzzk target set`은 기존 온라인 target의 scoreboard를 먼저 지운 뒤 새 target을 저장하고 sidebar를 갱신한다.
 - reload 또는 서버 시작 시 target이 offline이면 렌더링을 건너뛴다. 이후 해당 target이 join하면 listener가 sidebar를 갱신한다.
 - 다른 scoreboard 플러그인과 충돌할 수 있으므로 `/chzzk sidebar off`가 운영 escape hatch다.
-- sidebar 라인은 `DonationTier.values()` 순서와 death count로 생성된다.
+- sidebar 라인은 `DonationTier.values()` 순서와 death count로 생성된다. `/chzzk sidebar donations`와 `/chzzk sidebar deaths`로 각각 켜고 끌 수 있다.
+- Paper 1.21.1에는 왼쪽 display slot이 없으므로 `DisplaySlot.SIDEBAR`만 사용한다. 줄 순서용 1~9 숫자는 objective와 각 score에 Paper `NumberFormat.blank()`를 적용해 숨긴다.
 
 ## 변경 시 체크리스트
 

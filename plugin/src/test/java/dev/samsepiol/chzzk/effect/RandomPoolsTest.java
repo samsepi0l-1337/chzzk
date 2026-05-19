@@ -46,7 +46,7 @@ final class RandomPoolsTest {
                         EntityType.ZOMBIE,
                         EntityType.SKELETON,
                         EntityType.CREEPER,
-                        EntityType.EVOKER,
+                        EntityType.SPIDER,
                         EntityType.WITCH,
                         EntityType.GHAST),
                 RandomPools.combatMobs());

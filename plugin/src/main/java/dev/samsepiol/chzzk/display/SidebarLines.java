@@ -11,12 +11,16 @@ public final class SidebarLines {
     private SidebarLines() {
     }
 
-    public static List<String> build(int deaths) {
+    public static List<String> build(int deaths, boolean showDonations, boolean showDeaths) {
         List<String> lines = new ArrayList<>();
-        for (DonationTier tier : DonationTier.values()) {
-            lines.add(AMOUNT_FORMAT.format(tier.amount()) + ": " + tier.label());
+        if (showDonations) {
+            for (DonationTier tier : DonationTier.values()) {
+                lines.add(AMOUNT_FORMAT.format(tier.amount()) + ": " + tier.label());
+            }
         }
-        lines.add("Deaths: " + deaths);
+        if (showDeaths) {
+            lines.add("Deaths: " + deaths);
+        }
         return List.copyOf(lines);
     }
 }

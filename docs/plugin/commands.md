@@ -19,6 +19,8 @@
 | `/chzzk target status` | 현재 target과 availability를 표시한다. | `TargetService` |
 | `/chzzk sidebar on` | sidebar 표시를 켜고 즉시 갱신한다. | `SidebarService`, `PluginStateStore` |
 | `/chzzk sidebar off` | sidebar 표시를 끄고 target scoreboard를 main scoreboard로 되돌린다. | `SidebarService`, `PluginStateStore` |
+| `/chzzk sidebar donations on\|off` | 후원 tier 라인만 켜거나 끈다. | `SidebarService`, `PluginStateStore` |
+| `/chzzk sidebar deaths on\|off` | 사망 수 라인만 켜거나 끈다. | `SidebarService`, `PluginStateStore` |
 | `/chzzk deaths reset` | target 사망 수를 0으로 저장하고 sidebar를 갱신한다. | `DeathCountService`, `SidebarService` |
 | `/chzzk simulate <amount>` | 실제 webhook 없이 후원 이벤트를 생성해 효과 처리 경로를 실행한다. | `DonationService` |
 | `/chzzk reload` | config reload, webhook restart, listener 재등록, 서비스 재생성. | `ChzzkDonationPlugin` |
@@ -29,12 +31,13 @@
 
 - 1번째 인자: `target`, `sidebar`, `deaths`, `simulate`, `reload`
 - `target`: `set`, `clear`, `status`
-- `sidebar`: `on`, `off`
+- `sidebar`: `on`, `off`, `donations`, `deaths`
+- `sidebar donations` / `sidebar deaths`: `on`, `off`
 - `deaths`: `reset`
 
 플레이어 이름 completion은 아직 없다. 추가할 때는 offline/online target 저장 정책과 같이 검토한다.
 
-`/chzzk sidebar`는 `on`과 `off`만 유효한 mode로 처리한다. 다른 값은 sidebar 상태를 바꾸지 않고 usage를 반환한다.
+`/chzzk sidebar on|off`는 전체 sidebar를 켜거나 끈다. `/chzzk sidebar donations|deaths`는 해당 섹션만 켜거나 끈다. donations와 deaths를 모두 끄면 sidebar가 비워지고 main scoreboard로 되돌아간다. 잘못된 mode는 상태를 바꾸지 않고 usage를 반환한다.
 
 ## Simulation 경로
 

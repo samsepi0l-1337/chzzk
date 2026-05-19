@@ -6,6 +6,7 @@ import dev.samsepiol.chzzk.donation.DonationService;
 import dev.samsepiol.chzzk.donation.DonationTier;
 import dev.samsepiol.chzzk.donation.TargetAvailability;
 import dev.samsepiol.chzzk.effect.DonationEffectExecutor;
+import dev.samsepiol.chzzk.listener.DonationTntListener;
 import dev.samsepiol.chzzk.listener.TargetDeathListener;
 import dev.samsepiol.chzzk.listener.TargetJoinListener;
 import dev.samsepiol.chzzk.state.DeathCountService;
@@ -60,7 +61,7 @@ public final class ChzzkDonationPlugin extends JavaPlugin {
         targetService = new TargetService(stateStore);
         deathCountService = new DeathCountService(stateStore.deathCount(), stateStore::setDeathCount);
         sidebarService = new SidebarService(stateStore, targetService, deathCountService);
-        effectExecutor = new DonationEffectExecutor(targetService, getConfig().getInt("teleport.radius", 64));
+        effectExecutor = new DonationEffectExecutor(targetService);
 
         DonationService donationService = new DonationService(
                 stateStore.recentEventIds(),
@@ -96,6 +97,7 @@ public final class ChzzkDonationPlugin extends JavaPlugin {
                 sidebarService,
                 effectExecutor);
         Bukkit.getPluginManager().registerEvents(deathListener, this);
+        Bukkit.getPluginManager().registerEvents(new DonationTntListener(targetService, effectExecutor), this);
         Bukkit.getPluginManager().registerEvents(new TargetJoinListener(targetService, sidebarService), this);
     }
 
@@ -170,4 +172,5 @@ public final class ChzzkDonationPlugin extends JavaPlugin {
             throw new IllegalStateException("Unable to finish " + actionName, exception);
         }
     }
+
 }
