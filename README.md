@@ -163,6 +163,7 @@ Socket.IO와 CHZZK Session 세부 계약은 `docs/bridge/chzzk-auth-and-session.
 | Minecraft webhook protocol | `docs/bridge/webhook-protocol.md`       |
 | Docker 실행과 배포         | `docs/infra/docker-deployment.md`       |
 | Windows 로컬 (Docker 없이) | `docs/infra/windows-local-run.md`       |
+| Windows 서버 검증          | `docs/infra/windows-server-verification.md` |
 | AWS EC2 배포               | `docs/infra/aws-ec2-deployment.md`      |
 | 환경 변수                  | `docs/infra/env-reference.md`           |
 | 테스트와 커버리지          | `docs/testing/coverage-and-runbook.md`  |

@@ -1,6 +1,7 @@
 # Windows에서 Docker 없이 실행
 
 Docker Compose 없이 **Paper 서버(플러그인)**와 **Node `bridge`**를 Windows에서 띄우는 절차다. Docker 기본 경로는 [docker-deployment.md](docker-deployment.md)를 따른다.
+서버를 열기 전/후 검증 기준은 [windows-server-verification.md](windows-server-verification.md)를 따른다.
 
 ## 선행 조건
 
@@ -221,6 +222,8 @@ bridge는 실제 CHZZK `DONATION.channelId`가 `CHZZK_CHANNEL_ID`와 일치하�
 | bridge 단위 테스트/커버리지 | `npm --prefix bridge run coverage`                                  |
 | bridge 빌드                 | `npm --prefix bridge run build`                                     |
 | plugin                      | Git Bash: `./gradlew check shadowJar` 또는 `gradle check shadowJar` |
+
+Windows에서 실제 서버를 열었다는 검증은 빌드 성공만으로 끝내지 않는다. Paper 로그의 plugin 로드, webhook health `{"status":"ok"}`, Minecraft `25565` 접속, `/chzzk target status` 응답까지 확인한다.
 
 ## 문제가 생기면
 

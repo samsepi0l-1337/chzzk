@@ -15,6 +15,7 @@
 | Minecraft webhook 프로토콜 | [bridge/webhook-protocol.md](bridge/webhook-protocol.md) | HMAC, payload, `amount` int 계약, 중복 한계, retry/status |
 | Docker 실행/배포 | [infra/docker-deployment.md](infra/docker-deployment.md) | compose, Paper-only smoke, 포트와 volume |
 | Windows 로컬 실행 | [infra/windows-local-run.md](infra/windows-local-run.md) | Docker 없이 Paper 먼저, bridge 나중 실행 |
+| Windows 서버 검증 | [infra/windows-server-verification.md](infra/windows-server-verification.md) | Windows 서버 사전/실행 검증 명령과 합격 기준 |
 | AWS EC2 배포 | [infra/aws-ec2-deployment.md](infra/aws-ec2-deployment.md) | 단일 EC2에서 Docker compose 운영 경계 |
 | 환경 변수 | [infra/env-reference.md](infra/env-reference.md) | Docker/bridge env와 plugin config 연결 |
 | 테스트/커버리지 | [testing/coverage-and-runbook.md](testing/coverage-and-runbook.md) | 100% coverage 기준과 수동 smoke 절차 |
