@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 final class ChzzkCommandTest {
@@ -16,6 +17,13 @@ final class ChzzkCommandTest {
     @Test
     void rejectsNonNumericSimulationAmount() {
         assertTrue(ChzzkCommand.parseSimulationAmount("abc").isEmpty());
+    }
+
+    @Test
+    void parsesOnlyExplicitSidebarModes() {
+        assertEquals(Optional.of(true), ChzzkCommand.parseSidebarEnabled("on"));
+        assertEquals(Optional.of(false), ChzzkCommand.parseSidebarEnabled("off"));
+        assertTrue(ChzzkCommand.parseSidebarEnabled("maybe").isEmpty());
     }
 
     @Test

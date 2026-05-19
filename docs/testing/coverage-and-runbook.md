@@ -41,6 +41,10 @@ coverage 대상:
 - `src/chzzk-session.ts`
 - `src/config.ts`
 - `src/donation-parser.ts`
+- `src/e2e-check-env-cli.ts`
+- `src/e2e-health-cli.ts`
+- `src/e2e-tools.ts`
+- `src/e2e-webhook-cli.ts`
 - `src/load-env-file.ts`
 - `src/index.ts`
 - `src/oauth-callback-server.ts`
@@ -94,6 +98,8 @@ bridge:
 - `bridge/test/config.test.ts`
 - `bridge/test/donation-parser.test.ts`
 - `bridge/test/docker-runtime.test.ts`
+- `bridge/test/e2e-cli.test.ts`
+- `bridge/test/e2e-tools.test.ts`
 - `bridge/test/index.test.ts`
 - `bridge/test/load-env-file.test.ts`
 - `bridge/test/oauth-callback-server.test.ts`
@@ -109,28 +115,85 @@ bridge:
 | `bridge/src/chzzk-auth.ts` | `npm --prefix bridge run coverage`, `npm --prefix bridge run build` |
 | `bridge/src/chzzk-session.ts` | `npm --prefix bridge run coverage`, `npm --prefix bridge run build` |
 | `bridge/src/index.ts` | `npm --prefix bridge run coverage`, `npm --prefix bridge run build` |
+| `bridge/src/e2e-*` | `npm --prefix bridge run coverage`, `npm --prefix bridge run build`, `npm run e2e:health` |
 | `bridge/src/webhook-client.ts` 또는 `donation-parser.ts` | bridge coverage/build + plugin webhook/donation 관련 Gradle tests |
 | `plugin/src/main/java/.../donation` | `./gradlew check shadowJar` |
 | `plugin/src/main/java/.../webhook` | `./gradlew check shadowJar` |
 | `plugin/src/main/resources` 또는 Docker config | 관련 unit test + Docker build 가능 여부 |
 | 문서만 변경 | `git diff --check`, 문서 경로 확인 |
 
-## 수동 검증
+## E2E 단계별 검증
 
-라이브 검증은 credential과 Minecraft runtime이 필요하다. 기본 자동 검증에는 포함하지 않는다.
+라이브 CHZZK 검증은 credential과 Minecraft runtime이 필요하다. 기본 자동 검증에는 포함하지 않는다.
 
-수동 절차:
+### Phase 0: webhook health
 
-1. `.env`에 CHZZK credential, `CHZZK_CHANNEL_ID`, webhook secret, `EULA=true` 설정.
-2. token store bootstrap 방식을 선택한다.
-   - A: `.env`에 `CHZZK_REFRESH_TOKEN`을 넣어두면 `docker compose up --build` 첫 bridge startup이 `/data/.chzzk-tokens.json`을 생성한다.
-   - B: `.env`에 token을 남기지 않으려면 `docker compose -f docker-compose.yml run --rm bridge npm run auth -- --refresh-token "$CHZZK_REFRESH_TOKEN"`로 `bridge-data` volume token store를 먼저 만든다.
-3. `docker compose -f docker-compose.yml up --build`.
-4. 선택한 bootstrap 방식에 따라 bridge startup 로그 또는 Docker run auth 성공 로그를 확인한다.
-5. Minecraft 서버 접속.
-6. `/chzzk target set <player>` 실행.
-7. `/chzzk simulate <amount>`로 8개 tier 확인.
-8. 실제 CHZZK donation session smoke test.
+Paper 서버가 켜진 뒤 plugin webhook이 받을 준비가 됐는지 확인한다. secret은 필요 없다.
+
+```bash
+npm run e2e:health
+```
+
+기본 URL은 `http://127.0.0.1:29371/chzzk/donations/health`다. 다른 포트를 쓰면 `MINECRAFT_WEBHOOK_URL` 또는 `MINECRAFT_WEBHOOK_HEALTH_URL`을 프로세스 환경 변수로 설정한다.
+
+### Phase 1: plugin simulate
+
+bridge 없이 Minecraft plugin 효과만 먼저 확인한다. 체크리스트는 `scripts/e2e/phase1-checklist.md`에 있다.
+
+```text
+/chzzk target set <player>
+/chzzk target status
+/chzzk simulate 1000
+/chzzk simulate 2000
+/chzzk simulate 3000
+/chzzk simulate 5000
+/chzzk simulate 10000
+/chzzk simulate 30000
+/chzzk simulate 50000
+/chzzk simulate 100000
+```
+
+각 명령은 `Simulation result: ACCEPTED`를 반환하고 target 플레이어에게 해당 효과가 적용되어야 한다. `NO_TARGET`이면 `/chzzk target set <player>`가 빠진 상태이고, `TARGET_OFFLINE`이면 target 플레이어가 접속하지 않은 상태다.
+
+### Phase 2: signed webhook without CHZZK
+
+bridge live session 없이 plugin webhook 수신, HMAC 검증, dedupe/status mapping을 확인한다. `MINECRAFT_WEBHOOK_SECRET`은 `plugins\ChzzkDonation\config.yml`의 `webhook.shared-secret` 값과 같아야 한다.
+
+```bash
+export MINECRAFT_WEBHOOK_SECRET="same-as-plugin-config-yml"
+npm run e2e:webhook -- --amount 1000
+```
+
+재시도나 dedupe 확인이 필요하면 event id를 고정한다.
+
+```bash
+npm run e2e:webhook -- --amount 1000 --event-id e2e-fixed-1000
+npm run e2e:webhook -- --amount 1000 --event-id e2e-fixed-1000
+```
+
+첫 요청은 online target과 정상 tier 기준 `status: ACCEPTED`, 같은 `eventId` 재전송은 `409`와 `DUPLICATE`가 정상이다. secret이 다르면 `401`, target이 없거나 offline이면 `NO_TARGET` 또는 `TARGET_OFFLINE`이 반환된다.
+
+### Phase 3: bridge readiness
+
+실제 bridge를 시작하기 전에 env와 token bootstrap 상태를 확인한다. 값은 출력하지 않고 변수 이름과 token store 경로만 출력한다.
+
+```bash
+npm run e2e:health
+npm run e2e:check-env
+```
+
+`bridge`는 `.env`를 자동 로드하지 않는다. Docker 없이 실행할 때는 현재 shell의 프로세스 환경 변수로 `CHZZK_CLIENT_ID`, `CHZZK_CLIENT_SECRET`, `CHZZK_CHANNEL_ID`, `MINECRAFT_WEBHOOK_SECRET`, token store 또는 `CHZZK_REFRESH_TOKEN`을 설정한다.
+
+### Phase 4: live CHZZK
+
+credential과 실제 후원이 필요한 수동 단계다. 체크리스트는 `scripts/e2e/live-chzzk-checklist.md`에 있다.
+
+1. CHZZK credential, `CHZZK_CHANNEL_ID`, webhook secret, token store 또는 `CHZZK_REFRESH_TOKEN`을 준비한다.
+2. Paper를 먼저 띄우고 `npm run e2e:health`로 webhook readiness를 확인한다.
+3. `npm run e2e:check-env`로 bridge env를 확인한다.
+4. `npm --prefix bridge run start`로 bridge를 시작한다.
+5. Minecraft에서 `/chzzk target set <player>`를 실행한다.
+6. 실제 CHZZK donation session smoke test를 진행한다.
 
 ## 실패 시 우선순위
 

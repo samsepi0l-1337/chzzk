@@ -118,6 +118,9 @@ public final class DonationWebhookServer {
         } catch (BodyTooLargeException exception) {
             send(exchange, 413, "{\"status\":\"payload_too_large\"}");
             return;
+        } catch (BadRequestException exception) {
+            send(exchange, 400, "{\"status\":\"bad_request\"}");
+            return;
         }
         String signature = exchange.getRequestHeaders().getFirst("X-Chzzk-Signature");
         if (!hmacVerifier.verify(body, signature)) {
@@ -146,11 +149,11 @@ public final class DonationWebhookServer {
     private DonationEvent parseEvent(byte[] body) {
         JsonObject json = gson.fromJson(new String(body, StandardCharsets.UTF_8), JsonObject.class);
         return new DonationEvent(
-                json.get("eventId").getAsString(),
+                requiredString(json, "eventId"),
                 amountValue(json),
                 stringValue(json, "donatorNickname"),
                 stringValue(json, "message"),
-                Instant.parse(json.get("receivedAt").getAsString()));
+                Instant.parse(requiredString(json, "receivedAt")));
     }
 
     private static int amountValue(JsonObject json) {
@@ -167,10 +170,30 @@ public final class DonationWebhookServer {
             throw new IllegalArgumentException("amount must be an int");
         }
         try {
-            return Integer.parseInt(value);
+            int amount = Integer.parseInt(value);
+            if (amount <= 0) {
+                throw new IllegalArgumentException("amount must be positive");
+            }
+            return amount;
         } catch (NumberFormatException exception) {
             throw new IllegalArgumentException("amount must be an int", exception);
         }
+    }
+
+    private static String requiredString(JsonObject json, String name) {
+        JsonElement element = json.get(name);
+        if (element == null || element.isJsonNull() || !element.isJsonPrimitive()) {
+            throw new IllegalArgumentException(name + " must be a non-blank string");
+        }
+        JsonPrimitive primitive = element.getAsJsonPrimitive();
+        if (!primitive.isString()) {
+            throw new IllegalArgumentException(name + " must be a non-blank string");
+        }
+        String value = primitive.getAsString();
+        if (value.isBlank()) {
+            throw new IllegalArgumentException(name + " must be a non-blank string");
+        }
+        return value;
     }
 
     private static String stringValue(JsonObject json, String name) {
@@ -200,8 +223,19 @@ public final class DonationWebhookServer {
 
     private byte[] readLimitedBody(HttpExchange exchange) throws IOException {
         String contentLength = exchange.getRequestHeaders().getFirst("Content-Length");
-        if (contentLength != null && Long.parseLong(contentLength) > maxBodyBytes) {
-            throw new BodyTooLargeException();
+        if (contentLength != null) {
+            long parsedLength;
+            try {
+                parsedLength = Long.parseLong(contentLength);
+            } catch (NumberFormatException exception) {
+                throw new BadRequestException();
+            }
+            if (parsedLength < 0) {
+                throw new BadRequestException();
+            }
+            if (parsedLength > maxBodyBytes) {
+                throw new BodyTooLargeException();
+            }
         }
 
         try (InputStream input = exchange.getRequestBody();
@@ -221,5 +255,8 @@ public final class DonationWebhookServer {
     }
 
     private static final class BodyTooLargeException extends IOException {
+    }
+
+    private static final class BadRequestException extends IOException {
     }
 }

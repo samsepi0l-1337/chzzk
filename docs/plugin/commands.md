@@ -34,6 +34,8 @@
 
 플레이어 이름 completion은 아직 없다. 추가할 때는 offline/online target 저장 정책과 같이 검토한다.
 
+`/chzzk sidebar`는 `on`과 `off`만 유효한 mode로 처리한다. 다른 값은 sidebar 상태를 바꾸지 않고 usage를 반환한다.
+
 ## Simulation 경로
 
 `/chzzk simulate <amount>`는 다음 이벤트를 만든다.

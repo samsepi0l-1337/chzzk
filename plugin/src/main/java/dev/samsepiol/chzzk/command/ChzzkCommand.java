@@ -7,6 +7,7 @@ import dev.samsepiol.chzzk.state.DeathCountService;
 import dev.samsepiol.chzzk.state.TargetService;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -91,9 +92,13 @@ public final class ChzzkCommand implements TabExecutor {
             sender.sendMessage("/chzzk sidebar <on|off>");
             return;
         }
-        boolean enabled = "on".equals(args[1]);
-        sidebarService.setEnabled(enabled);
-        sender.sendMessage("Sidebar " + (enabled ? "enabled." : "disabled."));
+        Optional<Boolean> enabled = parseSidebarEnabled(args[1]);
+        if (enabled.isEmpty()) {
+            sender.sendMessage("/chzzk sidebar <on|off>");
+            return;
+        }
+        sidebarService.setEnabled(enabled.get());
+        sender.sendMessage("Sidebar " + (enabled.get() ? "enabled." : "disabled."));
     }
 
     private void handleDeaths(CommandSender sender, String[] args) {
@@ -132,6 +137,14 @@ public final class ChzzkCommand implements TabExecutor {
         } catch (NumberFormatException exception) {
             return OptionalInt.empty();
         }
+    }
+
+    static Optional<Boolean> parseSidebarEnabled(String value) {
+        return switch (value) {
+            case "on" -> Optional.of(true);
+            case "off" -> Optional.of(false);
+            default -> Optional.empty();
+        };
     }
 
     static void replaceTarget(

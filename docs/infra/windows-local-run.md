@@ -139,9 +139,80 @@ npm run auth -- --refresh-token "paste-refresh-token-here"
 
 ```text
 /chzzk target set <플레이어 이름>
+/chzzk target status
 ```
 
 후원 이벤트가 해당 플레이어에게 적용되는지 확인한다. 상세는 [plugin/effects-and-donation.md](../plugin/effects-and-donation.md)를 본다.
+
+### Phase 1: plugin simulate로 tier 확인
+
+bridge 없이 플러그인 효과만 먼저 확인한다. 다음 금액은 `DonationTier`와 정확히 일치해야 하며, 각 명령은 `Simulation result: ACCEPTED`를 반환해야 한다.
+
+```text
+/chzzk simulate 1000
+/chzzk simulate 2000
+/chzzk simulate 3000
+/chzzk simulate 5000
+/chzzk simulate 10000
+/chzzk simulate 30000
+/chzzk simulate 50000
+/chzzk simulate 100000
+```
+
+기대 효과:
+
+- `1000`: 랜덤 버프
+- `2000`: 랜덤 아이템
+- `3000`: 랜덤 몹
+- `5000`: 전투용 몹
+- `10000`: 전투용 몹 3마리
+- `30000`: TNT
+- `50000`: 랜덤 TP
+- `100000`: 즉사
+
+`NO_TARGET`이면 `/chzzk target set <플레이어 이름>`를 다시 실행하고, `TARGET_OFFLINE`이면 target 플레이어가 접속했는지 확인한다.
+
+### Phase 2: signed webhook smoke
+
+Paper가 켜져 있고 `plugins\ChzzkDonation\config.yml`의 `webhook.shared-secret`을 알고 있으면, bridge 전체 session 없이 plugin webhook 수신 경로를 확인할 수 있다.
+
+PowerShell:
+
+```powershell
+cd C:\path\to\chzzk
+$env:MINECRAFT_WEBHOOK_SECRET = "same-as-plugin-config-yml"
+
+npm run e2e:health
+npm run e2e:webhook -- --amount 1000
+```
+
+dedupe까지 보려면 같은 event id로 두 번 보낸다.
+
+```powershell
+npm run e2e:webhook -- --amount 1000 --event-id e2e-fixed-1000
+npm run e2e:webhook -- --amount 1000 --event-id e2e-fixed-1000
+```
+
+online target과 정상 tier 기준 첫 응답은 `status: ACCEPTED`다. signature 오류는 `401`, 같은 `eventId` 재전송은 `DUPLICATE`, target 문제가 있으면 `NO_TARGET` 또는 `TARGET_OFFLINE`이 정상 진단값이다.
+
+bridge live session까지 확인하려면 Paper webhook이 ready인 상태에서 `bridge`를 빌드하고 시작한다.
+
+```powershell
+cd C:\path\to\chzzk\bridge
+
+$env:CHZZK_CLIENT_ID = "your-client-id"
+$env:CHZZK_CLIENT_SECRET = "your-client-secret"
+$env:CHZZK_CHANNEL_ID = "target-streamer-channel-id"
+$env:MINECRAFT_WEBHOOK_SECRET = "same-as-plugin-config-yml"
+$env:CHZZK_TOKEN_STORE = "C:\path\to\chzzk\bridge\.chzzk-tokens.json"
+
+npm install
+npm run build
+npm run e2e:check-env
+npm run start
+```
+
+bridge는 실제 CHZZK `DONATION.channelId`가 `CHZZK_CHANNEL_ID`와 일치하는 이벤트만 plugin webhook으로 보낸다. `bridge`는 `.env`를 자동 로드하지 않으므로 위처럼 현재 프로세스 환경 변수로 설정한다.
 
 ## 8. 테스트/빌드 검증 (개발자용)
 
