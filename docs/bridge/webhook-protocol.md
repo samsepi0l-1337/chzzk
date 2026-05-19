@@ -58,11 +58,11 @@ X-Chzzk-Signature: sha256=<hmac-hex>
 
 플러그인은 `Gson`으로 `JsonObject`를 읽고 다음 값을 요구한다.
 
-- `eventId`: string
-- `amount`: JSON number, Java `int` 범위의 정수
-- `receivedAt`: ISO instant string
+- `eventId`: non-blank string
+- `amount`: JSON number, Java `int` 범위의 양의 정수
+- `receivedAt`: non-blank ISO instant string
 
-bridge는 CHZZK `payAmount` 문자열을 정수로 정규화할 때 `2,147,483,647` 이하만 webhook으로 보낸다. plugin은 같은 int 범위를 다시 검증하며, tier 금액과 정확히 일치하지 않는 int 값은 `UNKNOWN_AMOUNT`로 처리한다.
+bridge는 CHZZK `payAmount` 문자열을 정수로 정규화할 때 `2,147,483,647` 이하인 양수만 webhook으로 보낸다. plugin은 같은 양수 int 범위를 다시 검증하며, tier 금액과 정확히 일치하지 않는 int 값은 `UNKNOWN_AMOUNT`로 처리한다.
 
 `donatorNickname`, `message`는 없거나 null이면 빈 문자열로 처리한다.
 
@@ -78,6 +78,7 @@ plugin webhook body 제한:
 
 - 기본 `16 * 1024` bytes.
 - `Content-Length`가 제한보다 크면 즉시 `413`.
+- `Content-Length`가 숫자가 아니거나 음수이면 `400`.
 - stream read 중 제한을 넘겨도 `413`.
 
 큰 message나 payload 확장이 필요하면 제한, 테스트, 운영 문서를 같이 수정한다.

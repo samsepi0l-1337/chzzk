@@ -15,6 +15,7 @@ Docker compose 기준 파일:
 | `CHZZK_CLIENT_SECRET`          | 예                         | `your-client-secret`              | bridge CHZZK auth                               |
 | `CHZZK_CHANNEL_ID`             | 예                         | `target-streamer-channel-id`      | bridge 후원 이벤트 대상 스트리머 채널 필터      |
 | `CHZZK_REFRESH_TOKEN`          | 첫 token store가 없으면 예 | empty                             | bridge 첫 live session token bootstrap          |
+| `CHZZK_REDIRECT_URI`           | 아니오                     | `http://127.0.0.1:8080/chzzk/oauth/callback` | `auth:url` / `auth:login` local OAuth callback |
 | `CHZZK_OPENAPI_BASE_URL`       | 아니오                     | `https://openapi.chzzk.naver.com` | CHZZK API base URL                              |
 | `MINECRAFT_WEBHOOK_SECRET`     | 예                         | empty                             | bridge signature와 plugin HMAC 검증             |
 | `WEBHOOK_MAX_ATTEMPTS`         | 아니오                     | `3`                               | bridge webhook send retry                       |
@@ -44,6 +45,7 @@ Windows에서 CMD/PowerShell로 bridge를 띄울 때는 **`.env`를 Node가 자�
 | ----------------------- | ---------------------------------------- | ---------------------------------------------------------------------- |
 | `CHZZK_TOKEN_STORE`     | `.chzzk-tokens.json`                     | token JSON 저장 경로                                                   |
 | `CHZZK_REFRESH_TOKEN`   | empty                                    | token store가 없을 때 첫 live session bootstrap에 사용할 refresh token |
+| `CHZZK_REDIRECT_URI`    | `http://127.0.0.1:8080/chzzk/oauth/callback` | `auth:url` / `auth:login` local OAuth callback                        |
 | `CHZZK_CHANNEL_ID`      | `target-streamer-channel-id`             | 필수. 수신 `DONATION.channelId` 검증 필터                              |
 | `MINECRAFT_WEBHOOK_URL` | `http://127.0.0.1:29371/chzzk/donations` | plugin webhook URL                                                     |
 | `MINECRAFT_WEBHOOK_HEALTH_URL` | `MINECRAFT_WEBHOOK_URL + /health` | plugin webhook readiness URL                                           |

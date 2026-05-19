@@ -53,15 +53,15 @@
 
 ## Learned Workspace Facts
 
-- `bridge`는 `dotenv` 없이 `.env`를 자동 로드하지 않는다. Docker 없이 bridge를 실행할 때는 프로세스 환경 변수를 직접 설정한다.
+- `bridge`는 `dotenv` 없이 `.env`를 자동 로드하지 않는다. 루트 `chzzk/.env`는 Docker Compose 전용이다. Docker 없이 bridge를 실행할 때는 프로세스 환경 변수를 직접 설정하거나 `auth:login`/`auth:url`의 `--env-file`을 사용한다.
 - `CHZZK_CHANNEL_ID`는 필수 bridge env이며 수신 `DONATION.channelId` 검증 필터다. Session 구독 주체는 OAuth/token 계정이다.
 - 후원은 CHZZK Session 실시간 `DONATION`만 처리한다. 공식 문서에 과거 후원 REST가 없어 backfill은 하지 않는다.
 - Minecraft 효과는 `payAmount`가 tier 금액(1000·2000·3000·5000·10000·30000·50000·100000)과 정확히 일치할 때만 실행한다.
 - Minecraft/Paper 런타임은 1.21.1 / Java 21로 고정한다(`plugin/build.gradle.kts`, `docker/paper.Dockerfile`).
 - 공식 `DONATION` payload에 안정 event id가 없어 bridge가 webhook `eventId`를 생성한다. upstream이 동일 후원을 재전달하면 plugin dedupe가 막지 못할 수 있다.
-- 마인크래프트에서 후원 효과를 받을 플레이어는 `config.yml`이 아니라 게임 내 `/chzzk target set <플레이어>`로 지정한다.
+- 마인크래프트에서 후원 효과를 받을 플레이어는 `config.yml`이 아니라 게임 내 `/chzzk target set <플레이어>`로 지정한다. 플러그인만 검증할 때는 `/chzzk simulate <금액>`(tier 금액과 정확히 일치)을 사용한다.
 - bridge 기동에는 token store(예: `.chzzk-tokens.json`) 또는 `CHZZK_REFRESH_TOKEN`이 필요하다. 둘 다 없으면 bridge가 즉시 종료한다.
-- Docker로 bridge 이미지를 빌드할 때 `bridge/package.json`과 `bridge/package-lock.json`이 불일치하면 `npm ci` 단계에서 실패한다.
 - 로컬(non-Docker) 기동 순서는 Paper(webhook 포트 29371 준비) → bridge이다.
-- 저장소 루트에는 Unix `gradlew`만 포함되고 `gradlew.bat`은 없다. Windows에서는 Git Bash의 `./gradlew` 또는 시스템 `gradle`을 쓴다.
 - `MINECRAFT_WEBHOOK_SECRET`(bridge env)과 플러그인 `config.yml`의 `webhook.shared-secret`은 동일 값이어야 한다.
+- Naver/CHZZK Developers «로그인 리디렉션 URL»(OAuth `redirectUri`)과 bridge `MINECRAFT_WEBHOOK_URL`(Paper `:29371/chzzk/donations`)은 별개이다. Developers API scope는 「후원 조회」만 필요하다(Session `DONATION` 구독). `redirectUri`는 OAuth `code`/`state` 수신용이고, `auth:login`은 기본값 `http://127.0.0.1:8080/chzzk/oauth/callback`의 로컬 callback server를 띄운다. webhook은 Developers에 등록하지 않는다.
+- AWS/EC2 운영: 인터넷 공개는 SSH·Minecraft `25565/tcp`뿐이고 plugin webhook `29371`은 Docker 내부(`http://paper:29371/...`) 전용이며 security group에 열지 않는다. EC2 bridge는 로컬에서 발급한 `CHZZK_REFRESH_TOKEN` 또는 volume `.chzzk-tokens.json` bootstrap을 권장한다(공개 OAuth 콜백 미포함).

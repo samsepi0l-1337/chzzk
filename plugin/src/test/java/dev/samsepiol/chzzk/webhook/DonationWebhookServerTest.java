@@ -265,7 +265,7 @@ final class DonationWebhookServerTest {
         return request(port, "GET", path, null, null, false);
     }
 
-    private static Response post(int port, String body, String signature) throws IOException {
+    static Response post(int port, String body, String signature) throws IOException {
         return request(port, "POST", PATH, body, signature, false);
     }
 
@@ -353,6 +353,6 @@ final class DonationWebhookServerTest {
         return threadNames;
     }
 
-    private record Response(int statusCode, String body) {
+    record Response(int statusCode, String body) {
     }
 }
