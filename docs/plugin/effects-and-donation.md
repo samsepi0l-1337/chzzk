@@ -6,16 +6,16 @@
 
 `DonationTier`는 정확한 금액만 인정한다.
 
-| 금액     | enum                | 효과                             |
-| -------- | ------------------- | -------------------------------- |
-| `1000`   | `RANDOM_BUFF`       | 랜덤 버프 30초                   |
-| `2000`   | `RANDOM_ITEM`       | 랜덤 아이템 1개 지급             |
-| `3000`   | `RANDOM_MOB`        | 랜덤 몹 1마리 소환               |
-| `5000`   | `COMBAT_MOB`        | 전투용 몹 1마리 소환             |
-| `10000`  | `THREE_COMBAT_MOBS` | 전투용 몹 3마리 소환             |
+| 금액     | enum                | 효과                                                                         |
+| -------- | ------------------- | ---------------------------------------------------------------------------- |
+| `1000`   | `RANDOM_BUFF`       | 랜덤 버프 30초                                                               |
+| `2000`   | `RANDOM_ITEM`       | 랜덤 아이템 1개 지급                                                         |
+| `3000`   | `RANDOM_MOB`        | 랜덤 몹 1마리 소환                                                           |
+| `5000`   | `COMBAT_MOB`        | 전투용 몹 1마리 소환                                                         |
+| `10000`  | `THREE_COMBAT_MOBS` | 전투용 몹 3마리 소환                                                         |
 | `30000`  | `TNT`               | target 위치에 TNT 1개 소환, 폭발 시 target 반경 3블록 안에 TNT 5개 후속 소환 |
-| `50000`  | `RANDOM_TELEPORT`   | world border 안 랜덤 X/Z·Y teleport |
-| `100000` | `KILL_TARGET`       | target 즉사                      |
+| `50000`  | `RANDOM_TELEPORT`   | world border 안 랜덤 X/Z·Y teleport                                          |
+| `100000` | `KILL_TARGET`       | target 즉사                                                                  |
 
 금액이 정확히 일치하지 않으면 `UNKNOWN_AMOUNT`가 반환되고 효과는 실행되지 않는다.
 webhook `amount`는 JSON number이며 Java `int` 범위 안의 정수여야 한다. bridge는 `payAmount`를 정규화할 때 `2,147,483,647` 초과를 거부하고, plugin도 범위를 넘거나 소수/문자열이면 `400`으로 거부한다.
