@@ -49,10 +49,10 @@ http://paper:29371/chzzk/donations
 
 ## Volumes
 
-| Volume | Mount | 목적 |
-| --- | --- | --- |
-| `paper-data` | `/server` | Minecraft world, Paper config, plugin state |
-| `bridge-data` | `/data` | CHZZK token store |
+| Volume        | Mount     | 목적                                        |
+| ------------- | --------- | ------------------------------------------- |
+| `paper-data`  | `/server` | Minecraft world, Paper config, plugin state |
+| `bridge-data` | `/data`   | CHZZK token store                           |
 
 volumes를 삭제하면 world/state/token이 사라진다.
 
@@ -114,6 +114,36 @@ Windows PowerShell에서 Paper만 실행하는 예:
 $env:EULA = "true"
 $env:MINECRAFT_WEBHOOK_SECRET = "replace-with-shared-secret"
 docker compose -f docker-compose.paper.yml up --build
+```
+
+### 윈도우 로컬 Docker 통합 테스트 도구
+
+윈도우 환경에서 NPM(Node Bridge)과 Minecraft 플러그인을 포함한 전체 환경을 쉽고 안전하게 실행 및 테스트할 수 있는 대화형 스크립트를 제공합니다.
+
+#### 주요 기능
+
+- **자동 `.env` 파일 체크 및 생성**: 환경 변수 파일(`.env`)이 존재하지 않으면, 로컬 검증을 위한 더미 값(EULA 수락, webhook secret, dummy CHZZK ID 등)이 입력된 `.env` 파일을 자동으로 생성합니다.
+- **대화형 환경 기동**:
+  1. **FULL Stack 기동**: Paper Minecraft 서버와 Node Bridge를 둘 다 Docker로 띄웁니다.
+  2. **PAPER-ONLY 기동**: CHZZK API 자격증명이 없을 때 유용하며, Paper 서버 및 플러그인 전용으로 띄워 로컬 웹훅 시뮬레이션을 진행합니다.
+  3. **후원 웹훅 시뮬레이션**: 호스트 환경에서 `npm run e2e:webhook`을 실행하여 1,000 ~ 100,000 KRW 범위의 후원 및 Minecraft 내 이벤트를 즉시 시뮬레이션 전송합니다. (Node Bridge 설치가 필요할 경우 스크립트 내부에서 `npm install`을 자동 수행합니다.)
+  4. **헬스체크**: 웹훅 서버 가동 준비 상태 및 헬스 에러 코드를 확인합니다.
+  5. **종료 및 볼륨 정리**: 실행 중인 컨테이너들을 내리고 생성되었던 임시/익명 볼륨을 초기화합니다.
+
+#### 실행 방법
+
+저장소 루트에서 다음 명령을 실행하거나 `run-docker.bat` 파일을 더블클릭합니다:
+
+**PowerShell 또는 CMD:**
+
+```bat
+run-docker.bat
+```
+
+또는 **npm script:**
+
+```bash
+npm run docker:run
 ```
 
 Tailscale로 Windows 서버에 접속할 때는 Windows에서 `tailscale ip -4`로 IP를 확인한 뒤 Minecraft 클라이언트에서 `<windows-tailscale-ip>:25565`로 접속한다. 이 경로는 CHZZK credential 없이 서버 접속과 Paper plugin runtime만 확인하는 용도다.

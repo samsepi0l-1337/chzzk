@@ -3,6 +3,7 @@
   "scripts": {
     "test": "npm --prefix bridge test",
     "build": "npm --prefix bridge run build",
+    "docker:run": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/run-docker.ps1",
     "docker:build": "docker compose -f docker-compose.yml build",
     "docker:up": "docker compose -f docker-compose.yml up --build",
     "docker:paper:build": "docker compose -f docker-compose.paper.yml build",
