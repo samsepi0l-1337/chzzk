@@ -32,7 +32,7 @@ public final class DonationTntListener implements Listener {
         this.random = random;
     }
 
-    @EventHandler
+    @EventHandler(ignoreCancelled = true)
     public void onEntityExplode(EntityExplodeEvent event) {
         if (!(event.getEntity() instanceof TNTPrimed tnt)) {
             return;

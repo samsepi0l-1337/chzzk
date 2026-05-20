@@ -10,10 +10,11 @@ function Ensure-ScheduledTask {
     )
     $existing = Get-ScheduledTask -TaskName $Name -ErrorAction SilentlyContinue
     if ($existing) {
+        Stop-ScheduledTask -TaskName $Name -ErrorAction SilentlyContinue
         Unregister-ScheduledTask -TaskName $Name -Confirm:$false
     }
     $action = New-ScheduledTaskAction -Execute "cmd.exe" -Argument "/c `"$BatPath`"" -WorkingDirectory (Split-Path $BatPath)
-    $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Highest
+    $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType S4U -RunLevel Highest
     $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
     Register-ScheduledTask -TaskName $Name -Action $action -Principal $principal -Settings $settings -Force | Out-Null
 }
@@ -39,10 +40,13 @@ Write-Host "Bridge built"
 Ensure-ScheduledTask -Name "ChzzkPaper" -BatPath "$scripts\start-paper.bat"
 $bridgeStarter = "$scripts\start-bridge.ps1"
 $bridgeAction = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$bridgeStarter`"" -WorkingDirectory "$root\bridge"
-$bridgePrincipal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Highest
+$bridgePrincipal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType S4U -RunLevel Highest
 $bridgeSettings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
 $existingBridge = Get-ScheduledTask -TaskName "ChzzkBridge" -ErrorAction SilentlyContinue
-if ($existingBridge) { Unregister-ScheduledTask -TaskName "ChzzkBridge" -Confirm:$false }
+if ($existingBridge) {
+    Stop-ScheduledTask -TaskName "ChzzkBridge" -ErrorAction SilentlyContinue
+    Unregister-ScheduledTask -TaskName "ChzzkBridge" -Confirm:$false
+}
 Register-ScheduledTask -TaskName "ChzzkBridge" -Action $bridgeAction -Principal $bridgePrincipal -Settings $bridgeSettings -Force | Out-Null
 
 # Stop stale tasks/processes on paper ports

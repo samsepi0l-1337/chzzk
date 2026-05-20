@@ -95,12 +95,17 @@ public final class DonationEffectExecutor implements Consumer<DonationTier> {
         World world = current.getWorld();
         int minY = world.getMinHeight() + 1;
         int maxY = world.getMaxHeight() - 2;
-        int yRange = Math.max(1, maxY - minY + 1);
         WorldBorder border = world.getWorldBorder();
         for (int attempt = 0; attempt < MAX_TELEPORT_PLACEMENT_ATTEMPTS; attempt += 1) {
             BlockColumn column = pickRandomBlockColumn(border, random);
-            int blockY = minY + random.nextInt(yRange);
-            if (isValidPlayerTeleportPlacement(world, column.blockX(), blockY, column.blockZ())) {
+            java.util.List<Integer> validYList = new java.util.ArrayList<>();
+            for (int y = minY; y <= maxY; y += 1) {
+                if (isValidPlayerTeleportPlacement(world, column.blockX(), y, column.blockZ())) {
+                    validYList.add(y);
+                }
+            }
+            if (!validYList.isEmpty()) {
+                int blockY = validYList.get(random.nextInt(validYList.size()));
                 return new Location(world, column.blockX() + 0.5, blockY, column.blockZ() + 0.5);
             }
         }
