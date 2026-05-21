@@ -20,8 +20,9 @@
 2. Elastic IP는 쓰지 않고 EC2 public IPv4 또는 public DNS로 접속한다.
 3. EBS는 `gp3` 20~30 GiB로 만들고, world 보존이 필요 없으면 `DeleteOnTermination=true`로 둔다.
 4. Security group은 `22/tcp`와 `25565/tcp`만 연다. `29371/tcp`는 열지 않는다.
-5. `docker compose -f docker-compose.yml up -d --build`로 실행한다.
-6. 방송/테스트가 끝나면 필요한 world만 백업하고 EC2를 `terminate`한다.
+5. `scripts/aws-ec2-bootstrap.sh`로 EC2 host Docker/Compose를 준비한다.
+6. `.env`를 채운 뒤 `scripts/aws-ec2-deploy.sh`와 `scripts/aws-ec2-verify.sh`를 실행한다.
+7. 방송/테스트가 끝나면 `scripts/aws-ec2-backup.sh`로 필요한 world/token을 백업하고 EC2를 `terminate`한다.
 
 ## Instance Recommendation
 
@@ -30,6 +31,7 @@
 운영 전 smoke:
 
 - `docker compose -f docker-compose.yml up -d --build`
+- `bash scripts/aws-ec2-verify.sh`
 - Paper healthcheck 통과
 - Minecraft `25565` 접속
 - `/chzzk target set <player>`와 `/chzzk simulate 1000`
@@ -74,6 +76,26 @@ volume이나 EBS를 삭제하면 world/state/token도 삭제된다. 단기 이�
 
 secret 값은 shell history, 로그, Git commit에 남기지 않는다. 운영 `.env`는 서버에만 두고 `chmod 600 .env`로 보호한다. `.env`와 `.chzzk-tokens.json*`는 커밋 대상이 아니다.
 
+## AWS Helper Scripts
+
+이 저장소는 EC2 리소스를 만들지는 않는다. 대신 EC2 안에서 실행할 배포 키트를 제공한다.
+
+| 스크립트 | 역할 |
+| --- | --- |
+| `scripts/aws-ec2-bootstrap.sh` | Amazon Linux 2023 host에 `git`, `docker`, `curl`, `tar`, Docker Compose plugin을 설치하고 Docker 접근을 확인한다. |
+| `scripts/aws-ec2-deploy.sh` | `.env` 필수값과 compose config를 검증한 뒤 `paper` + `bridge`를 `up -d --build`로 실행한다. |
+| `scripts/aws-ec2-verify.sh` | compose port 계약, Paper health, bridge running, host `25565` listen, host `29371` 미노출을 확인한다. |
+| `scripts/aws-ec2-backup.sh` | `paper-data`, `bridge-data` Docker volume을 timestamp tar로 백업한다. |
+
+공통 원칙:
+
+- 스크립트는 AWS key, security group, EC2 instance를 만들지 않는다.
+- 스크립트는 `.env` secret 값을 출력하지 않는다.
+- `COMPOSE_FILE` 기본값은 `docker-compose.yml`이다.
+- `ENV_FILE` 기본값은 `.env`다.
+- `COMPOSE_VERSION`을 주면 bootstrap이 해당 Docker Compose release를 설치한다. 없으면 GitHub latest release tag를 조회한다.
+- `BACKUP_DIR` 기본값은 `./backups`다. `BACKUP_STOP_STACK=true`이면 백업 전 stack을 멈추고 백업 후 다시 올린다.
+
 ## EC2 Setup
 
 권장 콘솔 설정:
@@ -103,7 +125,20 @@ aws ec2 run-instances \
 
 ## Host Bootstrap
 
-EC2에 SSH로 접속한 뒤 실행한다.
+EC2에 SSH로 접속한 뒤 repository를 받고 bootstrap을 실행한다.
+
+권장 경로:
+
+```bash
+sudo dnf install -y git
+git clone https://github.com/samsepi0l-1337/chzzk.git
+cd ~/chzzk
+bash scripts/aws-ec2-bootstrap.sh
+```
+
+이미 repository가 있으면 `cd ~/chzzk`부터 실행한다.
+
+수동 bootstrap 경로:
 
 ```bash
 sudo dnf update -y
@@ -135,12 +170,7 @@ docker compose version
 
 ## Deploy
 
-repository를 받는다.
-
-```bash
-git clone https://github.com/samsepi0l-1337/chzzk.git
-cd chzzk
-```
+bootstrap이 끝난 repository 디렉터리에서 실행한다.
 
 `.env`를 만들고 secret을 채운다.
 
@@ -168,7 +198,7 @@ CHZZK_REFRESH_TOKEN=your-refresh-token
 첫 실행:
 
 ```bash
-docker compose -f docker-compose.yml up -d --build
+bash scripts/aws-ec2-deploy.sh
 ```
 
 첫 실행에서 `paper`는 Paper jar remap과 world generation 때문에 healthcheck 통과까지 오래 걸릴 수 있다. compose는 `paper`가 healthy가 된 뒤 `bridge`를 시작한다.
@@ -178,6 +208,7 @@ docker compose -f docker-compose.yml up -d --build
 컨테이너 상태:
 
 ```bash
+bash scripts/aws-ec2-verify.sh
 docker compose -f docker-compose.yml ps
 docker compose -f docker-compose.yml logs --tail=100 paper
 docker compose -f docker-compose.yml logs --tail=100 bridge
@@ -227,11 +258,7 @@ docker compose -f docker-compose.yml up -d --build
 변경 전 백업:
 
 ```bash
-docker compose -f docker-compose.yml stop
-docker run --rm -v chzzk_paper-data:/data -v "$PWD:/backup" alpine \
-  tar czf /backup/paper-data-backup.tgz -C /data .
-docker run --rm -v chzzk_bridge-data:/data -v "$PWD:/backup" alpine \
-  tar czf /backup/bridge-data-backup.tgz -C /data .
+BACKUP_STOP_STACK=true bash scripts/aws-ec2-backup.sh
 docker compose -f docker-compose.yml up -d --build
 ```
 
@@ -244,11 +271,7 @@ Compose project name을 바꾸면 volume 이름도 달라질 수 있다. `docker
 world나 token store를 남길 때만 먼저 백업한다.
 
 ```bash
-docker compose -f docker-compose.yml stop
-docker run --rm -v chzzk_paper-data:/data -v "$PWD:/backup" alpine \
-  tar czf /backup/paper-data-final.tgz -C /data .
-docker run --rm -v chzzk_bridge-data:/data -v "$PWD:/backup" alpine \
-  tar czf /backup/bridge-data-final.tgz -C /data .
+BACKUP_STOP_STACK=true BACKUP_DIR="$PWD/final-backups" bash scripts/aws-ec2-backup.sh
 ```
 
 백업을 로컬이나 S3 등 외부 위치로 옮긴 뒤 EC2를 terminate한다.
