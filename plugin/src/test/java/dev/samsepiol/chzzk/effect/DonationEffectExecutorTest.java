@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Random;
+import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.entity.EntityType;
 import org.junit.jupiter.api.Test;
@@ -29,25 +30,59 @@ final class DonationEffectExecutorTest {
     }
 
     @Test
-    void validTeleportPlacementAllowsCaveFloorWaterAndLava() {
-        assertTrue(DonationEffectExecutor.isValidPlayerTeleportPlacement(
-                Material.AIR, Material.STONE, Material.AIR));
-        assertTrue(DonationEffectExecutor.isValidPlayerTeleportPlacement(
-                Material.WATER, Material.WATER, Material.AIR));
-        assertTrue(DonationEffectExecutor.isValidPlayerTeleportPlacement(
-                Material.LAVA, Material.LAVA, Material.AIR));
-        assertTrue(DonationEffectExecutor.isValidPlayerTeleportPlacement(
-                Material.AIR, Material.LAVA, Material.AIR));
+    void pickRandomBlockColumnUsesCurrentXzWithinThousandBlocks() {
+        Location current = new Location(null, 250.5, 64.0, -80.5);
+
+        DonationEffectExecutor.BlockColumn minimum =
+                DonationEffectExecutor.pickRandomBlockColumn(current, new FixedRandom(0, 0));
+        DonationEffectExecutor.BlockColumn maximum =
+                DonationEffectExecutor.pickRandomBlockColumn(current, new FixedRandom(2000, 2000));
+
+        assertEquals(new DonationEffectExecutor.BlockColumn(-750, -1081), minimum);
+        assertEquals(new DonationEffectExecutor.BlockColumn(1250, 919), maximum);
     }
 
     @Test
-    void validTeleportPlacementRejectsFloatingAndBuried() {
+    void validTeleportPlacementAllowsOnlyOpenSkySurface() {
+        assertTrue(DonationEffectExecutor.isValidPlayerTeleportPlacement(
+                Material.AIR, Material.STONE, Material.AIR, true));
+    }
+
+    @Test
+    void validTeleportPlacementRejectsWaterLavaFloatingBuriedAndUnderground() {
         assertFalse(DonationEffectExecutor.isValidPlayerTeleportPlacement(
-                Material.AIR, Material.AIR, Material.AIR));
+                Material.WATER, Material.STONE, Material.AIR, true));
         assertFalse(DonationEffectExecutor.isValidPlayerTeleportPlacement(
-                Material.STONE, Material.STONE, Material.AIR));
+                Material.LAVA, Material.STONE, Material.AIR, true));
         assertFalse(DonationEffectExecutor.isValidPlayerTeleportPlacement(
-                Material.AIR, Material.STONE, Material.STONE));
+                Material.AIR, Material.AIR, Material.AIR, true));
+        assertFalse(DonationEffectExecutor.isValidPlayerTeleportPlacement(
+                Material.STONE, Material.STONE, Material.AIR, true));
+        assertFalse(DonationEffectExecutor.isValidPlayerTeleportPlacement(
+                Material.AIR, Material.STONE, Material.STONE, true));
+        assertFalse(DonationEffectExecutor.isValidPlayerTeleportPlacement(
+                Material.AIR, Material.STONE, Material.AIR, false));
+    }
+
+    @Test
+    void immediateTntCountUsesFiveToSevenSpawns() {
+        assertEquals(5, DonationEffectExecutor.pickTntSpawnCount(new FixedRandom(0)));
+        assertEquals(6, DonationEffectExecutor.pickTntSpawnCount(new FixedRandom(1)));
+        assertEquals(7, DonationEffectExecutor.pickTntSpawnCount(new FixedRandom(2)));
+    }
+
+    @Test
+    void pickTntSpawnLocationStaysWithinThreeBlockRadius() {
+        Location target = new Location(null, 10.0, 64.0, -20.0);
+        Random random = new Random(7);
+
+        for (int index = 0; index < 20; index += 1) {
+            Location tnt = DonationEffectExecutor.pickTntSpawnLocation(target, random);
+            double dx = tnt.getX() - target.getX();
+            double dy = tnt.getY() - target.getY();
+            double dz = tnt.getZ() - target.getZ();
+            assertTrue(dx * dx + dy * dy + dz * dz <= 9.0, "offset outside 3-block radius");
+        }
     }
 
     private static final class FixedRandom extends Random {

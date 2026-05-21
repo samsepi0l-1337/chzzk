@@ -10,7 +10,6 @@ import java.util.function.Consumer;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
-import org.bukkit.WorldBorder;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.TNTPrimed;
@@ -19,9 +18,13 @@ import org.bukkit.potion.PotionEffect;
 
 public final class DonationEffectExecutor implements Consumer<DonationTier> {
     private static final int MAX_TELEPORT_PLACEMENT_ATTEMPTS = 32;
+    private static final int RANDOM_TELEPORT_HORIZONTAL_RANGE = 1000;
+    static final int TNT_SPAWN_RADIUS = 3;
+    static final int TNT_MIN_SPAWNS = 5;
+    static final int TNT_MAX_SPAWNS = 7;
+    private static final int TNT_LOCATION_ATTEMPTS = 16;
     private final TargetService targetService;
     private final Set<UUID> pluginKills = ConcurrentHashMap.newKeySet();
-    private final Set<UUID> donationTnts = ConcurrentHashMap.newKeySet();
     private final Random random;
 
     public DonationEffectExecutor(TargetService targetService) {
@@ -53,10 +56,6 @@ public final class DonationEffectExecutor implements Consumer<DonationTier> {
         return pluginKills.remove(uuid);
     }
 
-    public boolean consumeDonationTnt(UUID uuid) {
-        return donationTnts.remove(uuid);
-    }
-
     private void applyRandomBuff(Player target) {
         target.addPotionEffect(new PotionEffect(pick(RandomPools.buffs()), 20 * 30, 0));
     }
@@ -83,8 +82,30 @@ public final class DonationEffectExecutor implements Consumer<DonationTier> {
     }
 
     private void spawnTnt(Player target) {
-        TNTPrimed tnt = target.getWorld().spawn(target.getLocation(), TNTPrimed.class);
-        donationTnts.add(tnt.getUniqueId());
+        int count = pickTntSpawnCount(random);
+        for (int index = 0; index < count; index += 1) {
+            target.getWorld().spawn(pickTntSpawnLocation(target.getLocation(), random), TNTPrimed.class);
+        }
+    }
+
+    static int pickTntSpawnCount(Random random) {
+        return TNT_MIN_SPAWNS + random.nextInt(TNT_MAX_SPAWNS - TNT_MIN_SPAWNS + 1);
+    }
+
+    static Location pickTntSpawnLocation(Location targetLocation, Random random) {
+        for (int attempt = 0; attempt < TNT_LOCATION_ATTEMPTS; attempt += 1) {
+            int offsetX = pickTntOffset(random);
+            int offsetY = pickTntOffset(random);
+            int offsetZ = pickTntOffset(random);
+            if (offsetX * offsetX + offsetY * offsetY + offsetZ * offsetZ <= TNT_SPAWN_RADIUS * TNT_SPAWN_RADIUS) {
+                return targetLocation.clone().add(offsetX, offsetY, offsetZ);
+            }
+        }
+        return targetLocation.clone();
+    }
+
+    private static int pickTntOffset(Random random) {
+        return random.nextInt(TNT_SPAWN_RADIUS * 2 + 1) - TNT_SPAWN_RADIUS;
     }
 
     private void teleportRandomly(Player target) {
@@ -93,30 +114,26 @@ public final class DonationEffectExecutor implements Consumer<DonationTier> {
 
     private Location pickRandomTeleportDestination(Location current) {
         World world = current.getWorld();
-        int minY = world.getMinHeight() + 1;
         int maxY = world.getMaxHeight() - 2;
-        WorldBorder border = world.getWorldBorder();
         for (int attempt = 0; attempt < MAX_TELEPORT_PLACEMENT_ATTEMPTS; attempt += 1) {
-            BlockColumn column = pickRandomBlockColumn(border, random);
-            java.util.List<Integer> validYList = new java.util.ArrayList<>();
-            for (int y = minY; y <= maxY; y += 1) {
-                if (isValidPlayerTeleportPlacement(world, column.blockX(), y, column.blockZ())) {
-                    validYList.add(y);
-                }
-            }
-            if (!validYList.isEmpty()) {
-                int blockY = validYList.get(random.nextInt(validYList.size()));
-                return new Location(world, column.blockX() + 0.5, blockY, column.blockZ() + 0.5);
+            BlockColumn column = pickRandomBlockColumn(current, random);
+            int feetY = world.getHighestBlockYAt(column.blockX(), column.blockZ()) + 1;
+            if (feetY <= maxY && isValidPlayerTeleportPlacement(world, column.blockX(), feetY, column.blockZ())) {
+                return new Location(world, column.blockX() + 0.5, feetY, column.blockZ() + 0.5);
             }
         }
         throw new IllegalStateException("Unable to find teleport placement");
     }
 
-    static BlockColumn pickRandomBlockColumn(WorldBorder border, Random random) {
-        Location center = border.getCenter();
-        int half = Math.max(0, (int) Math.floor(border.getSize() / 2.0) - 1);
-        int blockX = pickRandomBlockCoordinate(center.getBlockX() - half, center.getBlockX() + half, random);
-        int blockZ = pickRandomBlockCoordinate(center.getBlockZ() - half, center.getBlockZ() + half, random);
+    static BlockColumn pickRandomBlockColumn(Location current, Random random) {
+        int blockX = pickRandomBlockCoordinate(
+                current.getBlockX() - RANDOM_TELEPORT_HORIZONTAL_RANGE,
+                current.getBlockX() + RANDOM_TELEPORT_HORIZONTAL_RANGE,
+                random);
+        int blockZ = pickRandomBlockCoordinate(
+                current.getBlockZ() - RANDOM_TELEPORT_HORIZONTAL_RANGE,
+                current.getBlockZ() + RANDOM_TELEPORT_HORIZONTAL_RANGE,
+                random);
         return new BlockColumn(blockX, blockZ);
     }
 
@@ -134,39 +151,31 @@ public final class DonationEffectExecutor implements Consumer<DonationTier> {
         if (!feet.isPassable() || !head.isPassable()) {
             return false;
         }
-        if (feet.isLiquid()) {
-            return true;
+        if (feet.isLiquid() || head.isLiquid()) {
+            return false;
         }
         return below.getType().isSolid();
     }
 
-    static boolean isValidPlayerTeleportPlacement(Material feetBlock, Material belowBlock, Material headBlock) {
+    static boolean isValidPlayerTeleportPlacement(
+            Material feetBlock, Material belowBlock, Material headBlock, boolean openSky) {
+        if (!openSky) {
+            return false;
+        }
         if (!isPassableForPlayerBody(feetBlock) || !isPassableForPlayerBody(headBlock)) {
             return false;
         }
-        return hasTeleportSupport(feetBlock, belowBlock);
+        return isSupportBlockForPlayer(belowBlock);
     }
 
     private static boolean isPassableForPlayerBody(Material material) {
         return material == Material.AIR
                 || material == Material.CAVE_AIR
-                || material == Material.VOID_AIR
-                || material == Material.WATER
-                || material == Material.LAVA;
+                || material == Material.VOID_AIR;
     }
 
-    private static boolean hasTeleportSupport(Material feetBlock, Material belowBlock) {
-        if (feetBlock == Material.WATER || feetBlock == Material.LAVA) {
-            return true;
-        }
-        return isSupportBlock(belowBlock);
-    }
-
-    private static boolean isSupportBlock(Material belowBlock) {
-        if (isPassableForPlayerBody(belowBlock) && belowBlock != Material.LAVA) {
-            return false;
-        }
-        return belowBlock == Material.LAVA || !isPassableForPlayerBody(belowBlock);
+    private static boolean isSupportBlockForPlayer(Material material) {
+        return !isPassableForPlayerBody(material) && material != Material.WATER && material != Material.LAVA;
     }
 
     private void kill(Player target) {

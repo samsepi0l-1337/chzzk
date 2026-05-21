@@ -167,11 +167,13 @@ bridge 없이 플러그인 효과만 먼저 확인한다. 다음 금액은 `Dona
 - `3000`: 랜덤 몹
 - `5000`: 전투용 몹
 - `10000`: 전투용 몹 3마리
-- `30000`: TNT
-- `50000`: 랜덤 TP
+- `30000`: target 반경 3블록 안에 TNT 5~7개 즉시 소환
+- `50000`: 현재 위치 기준 X/Z 각각 1000블록 이내 지상 랜덤 TP
 - `100000`: 즉사
 
 `NO_TARGET`이면 `/chzzk target set <플레이어 이름>`를 다시 실행하고, `TARGET_OFFLINE`이면 target 플레이어가 접속했는지 확인한다.
+
+Docker로 Windows 로컬 검증 중이면 `run-docker.bat`의 `6) Update Docker Images and Rebuild Containers`를 실행해 최신 plugin jar가 들어간 Paper 이미지를 다시 빌드하고 컨테이너를 재생성한다.
 
 ### Phase 2: signed webhook smoke
 

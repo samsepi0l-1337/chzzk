@@ -13,8 +13,8 @@
 | `3000`   | `RANDOM_MOB`        | 랜덤 몹 1마리 소환                                                           |
 | `5000`   | `COMBAT_MOB`        | 전투용 몹 1마리 소환                                                         |
 | `10000`  | `THREE_COMBAT_MOBS` | 전투용 몹 3마리 소환                                                         |
-| `30000`  | `TNT`               | target 위치에 TNT 1개 소환, 폭발 시 target 반경 3블록 안에 TNT 5개 후속 소환 |
-| `50000`  | `RANDOM_TELEPORT`   | world border 안 랜덤 X/Z·Y teleport                                          |
+| `30000`  | `TNT`               | target 반경 3블록 안에 TNT 5~7개 즉시 소환                                  |
+| `50000`  | `RANDOM_TELEPORT`   | 현재 위치 기준 X/Z 각각 1000블록 이내 지상 teleport                          |
 | `100000` | `KILL_TARGET`       | target 즉사                                                                  |
 
 금액이 정확히 일치하지 않으면 `UNKNOWN_AMOUNT`가 반환되고 효과는 실행되지 않는다.
@@ -48,10 +48,10 @@ webhook `amount`는 JSON number이며 Java `int` 범위 안의 정수여야 한�
 `DonationEffectExecutor`는 `Consumer<DonationTier>`다.
 
 - target은 `TargetService.onlineTarget()`에서 가져온다.
-- `RANDOM_TELEPORT`는 world border 안에서 무작위 block column을 최대 32번 선택하고, 선택된 column 내의 모든 Y 중 유효한 높이들을 찾아 그 중 무작위로 하나의 Y를 선택해 텔레포트한다. 발·머리 칸이 비고(공기·물·용암 등), 발 아래가 solid이거나 발이 물/용암이면 허용한다. 공중 부유·블록 속 파묻힘만 거부하며, 용암·동굴·물은 허용한다. 원거리 offset·`getHighestBlockYAt`은 쓰지 않는다.
+- `RANDOM_TELEPORT`는 현재 target 위치 기준 X와 Z를 각각 `-1000..1000` 범위에서 무작위로 고르고, 해당 column의 최고 블록 바로 위로 텔레포트한다. 발·머리 칸은 비어 있어야 하고 발 아래는 solid여야 하며, 물속·용암 속·땅속·공중 부유 위치는 거부한다.
 - 랜덤 선택은 `RandomPools` 값에서 `Random`으로 선택한다.
 - `COMBAT_MOB`와 `THREE_COMBAT_MOBS`는 각 소환마다 1% 확률로 `WITHER`를 뽑고, 실패하면 `RandomPools.combatMobs()`에서 무작위로 선택한다.
-- `TNT`는 최초 TNT 1개를 target 위치에 소환하고 UUID를 추적한다. 그 TNT가 폭발하면 `DonationTntListener`가 현재 온라인 target 기준 반경 3블록 안에 TNT 5개를 후속 소환한다. 후속 TNT는 추적하지 않으므로 다시 chain되지 않는다.
+- `TNT`는 target 기준 반경 3블록 안에 TNT 5~7개를 즉시 소환한다. 최초 TNT 폭발을 기다리는 후속 소환 체인은 없다.
 - `KILL_TARGET`은 player UUID를 `pluginKills`에 기록하고 `setHealth(0.0)`을 호출한다.
 
 Paper API를 호출하므로 반드시 서버 메인 스레드에서 실행되어야 한다. webhook에서 직접 호출하지 말고 `ChzzkDonationPlugin.syncRunner` 경로를 유지한다.
@@ -87,6 +87,7 @@ target availability도 `Bukkit.getPlayer` 계열 API를 사용하므로 webhook 
 - `plugin/src/test/java/dev/samsepiol/chzzk/donation/DonationServiceTest.java`
 - `plugin/src/test/java/dev/samsepiol/chzzk/donation/DonationTierTest.java`
 - `plugin/src/test/java/dev/samsepiol/chzzk/donation/DonationResultTest.java`
+- `plugin/src/test/java/dev/samsepiol/chzzk/effect/DonationEffectExecutorTest.java`
 - `plugin/src/test/java/dev/samsepiol/chzzk/webhook/DonationWebhookServerTest.java`
 - `bridge/test/donation-parser.test.ts`
 - `plugin/src/test/java/dev/samsepiol/chzzk/state/DeathCountServiceTest.java`
