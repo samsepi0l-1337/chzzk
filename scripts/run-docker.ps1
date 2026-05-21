@@ -47,13 +47,14 @@ function Show-Menu {
     Write-Host "3) Send Simulated Donation (signed webhook) to Paper Server" -ForegroundColor White
     Write-Host "4) Check Webhook Server Health" -ForegroundColor White
     Write-Host "5) Stop and Cleanup Docker Containers" -ForegroundColor White
-    Write-Host "6) Exit" -ForegroundColor White
+    Write-Host "6) Update Docker Images and Rebuild Containers" -ForegroundColor White
+    Write-Host "7) Exit" -ForegroundColor White
     Write-Host ""
 }
 
 while ($true) {
     Show-Menu
-    $choice = Read-Host "Enter option [1-6]"
+    $choice = Read-Host "Enter option [1-7]"
 
     switch ($choice) {
         "1" {
@@ -132,11 +133,21 @@ while ($true) {
             Write-Host "Stopped all containers and removed temporary volumes." -ForegroundColor Green
         }
         "6" {
+            Write-Host "Updating Docker images and rebuilding containers..." -ForegroundColor Cyan
+            docker compose -f docker-compose.yml pull --ignore-pull-failures
+            docker compose -f docker-compose.paper.yml pull --ignore-pull-failures
+            docker compose -f docker-compose.yml build --pull --no-cache
+            docker compose -f docker-compose.paper.yml build --pull --no-cache
+            docker compose -f docker-compose.yml up -d --force-recreate
+            Write-Host "Docker stack rebuilt and restarted with the latest local plugin jar." -ForegroundColor Green
+            Write-Host "Use Option 4 to check readiness, or 'docker compose logs -f' to view logs." -ForegroundColor Gray
+        }
+        "7" {
             Write-Host "Exiting. Happy testing!" -ForegroundColor Green
             break
         }
         default {
-            Write-Host "Invalid choice. Please select 1-6." -ForegroundColor Red
+            Write-Host "Invalid choice. Please select 1-7." -ForegroundColor Red
         }
     }
 }
