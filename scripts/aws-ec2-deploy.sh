@@ -37,9 +37,14 @@ require_value() {
 
 cd "$REPO_ROOT"
 [ -f "$COMPOSE_FILE" ] || fail "missing $COMPOSE_FILE"
-[ -f "$ENV_FILE" ] || fail "missing $ENV_FILE; run: cp .env.example .env && chmod 600 .env"
 command -v docker >/dev/null 2>&1 || fail "docker is required; run scripts/aws-ec2-bootstrap.sh first"
 docker compose version >/dev/null 2>&1 || fail "docker compose is required; run scripts/aws-ec2-bootstrap.sh first"
+
+compose_cmd=(docker compose)
+if [ -f "$ENV_FILE" ]; then
+  compose_cmd+=(--env-file "$ENV_FILE")
+fi
+compose_cmd+=(-f "$COMPOSE_FILE")
 
 for key in EULA CHZZK_CLIENT_ID CHZZK_CLIENT_SECRET CHZZK_CHANNEL_ID MINECRAFT_WEBHOOK_SECRET; do
   require_value "$key"
@@ -55,10 +60,10 @@ if [ -z "$(read_env_value CHZZK_REFRESH_TOKEN)" ]; then
 fi
 
 log "Validating compose config"
-docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" config >/dev/null
+"${compose_cmd[@]}" config >/dev/null
 
 log "Building and starting Paper + bridge"
-docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d --build
+"${compose_cmd[@]}" up -d --build
 
-docker compose -f "$COMPOSE_FILE" ps
+"${compose_cmd[@]}" ps
 log "Done. Verify with: bash scripts/aws-ec2-verify.sh"

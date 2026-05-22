@@ -4,6 +4,7 @@ set -euo pipefail
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 REPO_ROOT=$(cd "$SCRIPT_DIR/.." && pwd)
 COMPOSE_FILE=${COMPOSE_FILE:-docker-compose.yml}
+ENV_FILE=${ENV_FILE:-.env}
 HEALTH_URL=${HEALTH_URL:-http://127.0.0.1:29371/chzzk/donations/health}
 
 log() { printf '[aws-ec2-verify] %s\n' "$1"; }
@@ -27,15 +28,21 @@ command -v docker >/dev/null 2>&1 || fail "docker is required"
 docker compose version >/dev/null 2>&1 || fail "docker compose is required"
 [ -f "$COMPOSE_FILE" ] || fail "missing $COMPOSE_FILE"
 
+compose_cmd=(docker compose)
+if [ -f "$ENV_FILE" ]; then
+  compose_cmd+=(--env-file "$ENV_FILE")
+fi
+compose_cmd+=(-f "$COMPOSE_FILE")
+
 log "Checking compose port contract"
-config=$(docker compose -f "$COMPOSE_FILE" config)
+config=$("${compose_cmd[@]}" config)
 printf '%s\n' "$config" | grep -q 'published: "25565"' || fail "compose does not publish 25565"
 if printf '%s\n' "$config" | grep -q 'published: "29371"'; then
   fail "compose must not publish webhook port 29371"
 fi
 
-paper_id=$(docker compose -f "$COMPOSE_FILE" ps -q paper)
-bridge_id=$(docker compose -f "$COMPOSE_FILE" ps -q bridge)
+paper_id=$("${compose_cmd[@]}" ps -q paper)
+bridge_id=$("${compose_cmd[@]}" ps -q bridge)
 [ -n "$paper_id" ] || fail "paper container not found"
 [ -n "$bridge_id" ] || fail "bridge container not found"
 
@@ -46,7 +53,7 @@ bridge_running=$(docker inspect -f '{{.State.Running}}' "$bridge_id")
 [ "$bridge_running" = "true" ] || fail "bridge is not running"
 
 log "Checking plugin webhook from inside paper container"
-docker compose -f "$COMPOSE_FILE" exec -T paper curl -fsS "$HEALTH_URL" >/dev/null
+"${compose_cmd[@]}" exec -T paper curl -fsS "$HEALTH_URL" >/dev/null
 
 log "Checking host port exposure"
 host_port_listens 25565 || fail "host port 25565 is not listening"

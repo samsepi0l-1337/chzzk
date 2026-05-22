@@ -16,6 +16,7 @@
 - If operators cannot reach Minecraft, do not open webhook first; verify `25565`, security group, and Paper health.
 - If webhook fails on AWS, do not add a security group rule for `29371`; verify container-internal health.
 - If non-Docker env fails on Windows, do not rely on root `.env` autoload; set process env or use provided scripts.
+- If AWS helper scripts are run with a non-default env file, do not document only `.env`; show the same `ENV_FILE` on deploy, verify, and backup commands.
 
 ## Failure Counteraction Rule
 

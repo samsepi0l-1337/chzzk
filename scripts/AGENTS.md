@@ -18,6 +18,8 @@
 - If Windows copy paths fail, do not assume auth failed; create destination directories and use Windows-aware paths.
 - If AWS verify fails on `29371`, do not open it publicly; make it disappear from host listen and verify internal health.
 - If backups include `bridge-data`, do not treat them as harmless artifacts; protect them as token-bearing secrets.
+- If AWS deploy/verify/backup uses a non-default env file, do not rerun compose without that file; pass the same `ENV_FILE` through every compose command.
+- If stopped-stack backup fails after services are stopped, do not leave the stack down; restart through the EXIT trap before reporting the backup failure.
 
 ## Failure Counteraction Rule
 

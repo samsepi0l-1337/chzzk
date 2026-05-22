@@ -83,18 +83,18 @@ secret 값은 shell history, 로그, Git commit에 남기지 않는다. 운영 `
 | 스크립트 | 역할 |
 | --- | --- |
 | `scripts/aws-ec2-bootstrap.sh` | Amazon Linux 2023 host에 `git`, `docker`, `curl`, `tar`, Docker Compose plugin을 설치하고 Docker 접근을 확인한다. |
-| `scripts/aws-ec2-deploy.sh` | `.env` 필수값과 compose config를 검증한 뒤 `paper` + `bridge`를 `up -d --build`로 실행한다. |
-| `scripts/aws-ec2-verify.sh` | compose port 계약, Paper health, bridge running, host `25565` listen, host `29371` 미노출을 확인한다. |
-| `scripts/aws-ec2-backup.sh` | `paper-data`, `bridge-data` Docker volume을 timestamp tar로 백업한다. |
+| `scripts/aws-ec2-deploy.sh` | 환경 변수 또는 `ENV_FILE` 필수값과 compose config를 검증한 뒤 `paper` + `bridge`를 `up -d --build`로 실행한다. |
+| `scripts/aws-ec2-verify.sh` | compose port 계약, Paper health, bridge running, host `25565` listen, host `29371` 미노출을 확인한다. `ENV_FILE`이 있으면 같은 env 파일로 compose를 파싱한다. |
+| `scripts/aws-ec2-backup.sh` | `paper-data`, `bridge-data` Docker volume을 timestamp tar로 백업한다. `BACKUP_STOP_STACK=true`로 stack을 멈춘 경우 백업 실패 시에도 재시작을 시도한다. |
 
 공통 원칙:
 
 - 스크립트는 AWS key, security group, EC2 instance를 만들지 않는다.
 - 스크립트는 `.env` secret 값을 출력하지 않는다.
 - `COMPOSE_FILE` 기본값은 `docker-compose.yml`이다.
-- `ENV_FILE` 기본값은 `.env`다.
+- `ENV_FILE` 기본값은 `.env`다. 파일이 있으면 `docker compose --env-file`로 전달하고, 파일이 없으면 process environment만 사용한다.
 - `COMPOSE_VERSION`을 주면 bootstrap이 해당 Docker Compose release를 설치한다. 없으면 GitHub latest release tag를 조회한다.
-- `BACKUP_DIR` 기본값은 `./backups`다. `BACKUP_STOP_STACK=true`이면 백업 전 stack을 멈추고 백업 후 다시 올린다.
+- `BACKUP_DIR` 기본값은 `./backups`다. `BACKUP_STOP_STACK=true`이면 백업 전 stack을 멈추고 백업 후 다시 올린다. 중지된 서비스의 실제 mount를 `docker compose ps --all` 기준으로 확인하므로 non-default Compose project에서도 fallback volume 추측을 먼저 쓰지 않는다.
 
 ## EC2 Setup
 
@@ -200,6 +200,16 @@ CHZZK_REFRESH_TOKEN=your-refresh-token
 ```bash
 bash scripts/aws-ec2-deploy.sh
 ```
+
+`.env` 대신 별도 파일을 쓰면 deploy, verify, backup 모두 같은 `ENV_FILE`을 넘긴다.
+
+```bash
+ENV_FILE=/etc/chzzk/chzzk.env bash scripts/aws-ec2-deploy.sh
+ENV_FILE=/etc/chzzk/chzzk.env bash scripts/aws-ec2-verify.sh
+ENV_FILE=/etc/chzzk/chzzk.env BACKUP_STOP_STACK=true bash scripts/aws-ec2-backup.sh
+```
+
+secret을 systemd나 CI 환경 변수로 직접 주입하는 운영이면 `.env` 파일 없이도 deploy가 가능하다. 이 경우 필수 값은 process environment에 있어야 한다.
 
 첫 실행에서 `paper`는 Paper jar remap과 world generation 때문에 healthcheck 통과까지 오래 걸릴 수 있다. compose는 `paper`가 healthy가 된 뒤 `bridge`를 시작한다.
 
