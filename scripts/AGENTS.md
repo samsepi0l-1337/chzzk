@@ -20,6 +20,7 @@
 - If backups include `bridge-data`, do not treat them as harmless artifacts; protect them as token-bearing secrets.
 - If AWS deploy/verify/backup uses a non-default env file, do not rerun compose without that file; pass the same `ENV_FILE` through every compose command.
 - If stopped-stack backup fails after services are stopped, do not leave the stack down; restart through the EXIT trap before reporting the backup failure.
+- If Windows Docker Desktop update fails over SSH with `error getting credentials` / `logon session does not exist`, do not reset Docker credentials or repeat `--pull`; use an interactive Windows session or a local-base artifact overlay from verified build outputs.
 
 ## Failure Counteraction Rule
 

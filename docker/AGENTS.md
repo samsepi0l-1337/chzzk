@@ -19,6 +19,7 @@
 - If webhook is unreachable from bridge, do not publish `29371`; verify Docker internal URL `http://paper:29371/...`.
 - If Paper first-run health is slow, do not shorten healthcheck; inspect Paper logs and preserve startup budget.
 - If bridge image build fails on npm install, do not remove lockfile; ensure `bridge/package-lock.json` is in context.
+- If Windows Docker Desktop builds over SSH fail with `error getting credentials` / `logon session does not exist`, do not keep retrying registry pulls; run from an interactive Windows Docker session or use a local-base artifact overlay that avoids public image metadata.
 
 ## Failure Counteraction Rule
 
