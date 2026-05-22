@@ -13,7 +13,7 @@
 | `3000`   | `RANDOM_MOB`        | 랜덤 몹 1마리 소환                                                           |
 | `5000`   | `COMBAT_MOB`        | 전투용 몹 1마리 소환                                                         |
 | `10000`  | `THREE_COMBAT_MOBS` | 전투용 몹 3마리 소환                                                         |
-| `30000`  | `TNT`               | target 반경 3블록 안에 TNT 5~7개 즉시 소환                                  |
+| `30000`  | `TNT`               | target 반경 3블록 안에 TNT 5~7개 즉시 소환, 2초 뒤 폭발                     |
 | `50000`  | `RANDOM_TELEPORT`   | 현재 위치 기준 X/Z 각각 1000블록 이내 지상 teleport                          |
 | `100000` | `KILL_TARGET`       | target 즉사                                                                  |
 
@@ -51,7 +51,7 @@ webhook `amount`는 JSON number이며 Java `int` 범위 안의 정수여야 한�
 - `RANDOM_TELEPORT`는 현재 target 위치 기준 X와 Z를 각각 `-1000..1000` 범위에서 무작위로 고르고, 해당 column의 최고 블록 바로 위로 텔레포트한다. 발·머리 칸은 비어 있어야 하고 발 아래는 solid여야 하며, 물속·용암 속·땅속·공중 부유 위치는 거부한다.
 - 랜덤 선택은 `RandomPools` 값에서 `Random`으로 선택한다.
 - `COMBAT_MOB`와 `THREE_COMBAT_MOBS`는 각 소환마다 1% 확률로 `WITHER`를 뽑고, 실패하면 `RandomPools.combatMobs()`에서 무작위로 선택한다.
-- `TNT`는 target 기준 반경 3블록 안에 TNT 5~7개를 즉시 소환한다. 최초 TNT 폭발을 기다리는 후속 소환 체인은 없다.
+- `TNT`는 target 기준 반경 3블록 안에 TNT 5~7개를 즉시 소환하고 fuse를 `40 ticks`로 설정해 2초 뒤 폭발시킨다. 최초 TNT 폭발을 기다리는 후속 소환 체인은 없다.
 - `KILL_TARGET`은 player UUID를 `pluginKills`에 기록하고 `setHealth(0.0)`을 호출한다.
 
 Paper API를 호출하므로 반드시 서버 메인 스레드에서 실행되어야 한다. webhook에서 직접 호출하지 말고 `ChzzkDonationPlugin.syncRunner` 경로를 유지한다.

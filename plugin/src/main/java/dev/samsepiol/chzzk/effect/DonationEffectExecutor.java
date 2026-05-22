@@ -22,6 +22,7 @@ public final class DonationEffectExecutor implements Consumer<DonationTier> {
     static final int TNT_SPAWN_RADIUS = 3;
     static final int TNT_MIN_SPAWNS = 5;
     static final int TNT_MAX_SPAWNS = 7;
+    static final int TNT_FUSE_TICKS = 20 * 2;
     private static final int TNT_LOCATION_ATTEMPTS = 16;
     private final TargetService targetService;
     private final Set<UUID> pluginKills = ConcurrentHashMap.newKeySet();
@@ -84,7 +85,8 @@ public final class DonationEffectExecutor implements Consumer<DonationTier> {
     private void spawnTnt(Player target) {
         int count = pickTntSpawnCount(random);
         for (int index = 0; index < count; index += 1) {
-            target.getWorld().spawn(pickTntSpawnLocation(target.getLocation(), random), TNTPrimed.class);
+            TNTPrimed tnt = target.getWorld().spawn(pickTntSpawnLocation(target.getLocation(), random), TNTPrimed.class);
+            tnt.setFuseTicks(TNT_FUSE_TICKS);
         }
     }
 

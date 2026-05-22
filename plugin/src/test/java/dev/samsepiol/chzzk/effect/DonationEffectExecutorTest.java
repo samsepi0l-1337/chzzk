@@ -4,12 +4,20 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
+import java.util.List;
 import java.util.Random;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.World;
 import org.bukkit.entity.EntityType;
+import org.bukkit.entity.Player;
+import org.bukkit.entity.TNTPrimed;
 import org.junit.jupiter.api.Test;
 
 final class DonationEffectExecutorTest {
@@ -85,6 +93,108 @@ final class DonationEffectExecutorTest {
         }
     }
 
+    @Test
+    void spawnedTntUsesTwoSecondFuse() throws ReflectiveOperationException {
+        List<Integer> fuseTicks = new ArrayList<>();
+        World world = worldRecordingTntFuse(fuseTicks);
+        Player target = playerAt(world, new Location(world, 10.0, 64.0, -20.0));
+        DonationEffectExecutor executor = new DonationEffectExecutor(null, new FirstZeroThenCenterRandom());
+
+        Method spawnTnt = DonationEffectExecutor.class.getDeclaredMethod("spawnTnt", Player.class);
+        spawnTnt.setAccessible(true);
+        invoke(spawnTnt, executor, target);
+
+        assertEquals(List.of(40, 40, 40, 40, 40), fuseTicks);
+    }
+
+    private static void invoke(Method method, Object target, Object... arguments) throws ReflectiveOperationException {
+        try {
+            method.invoke(target, arguments);
+        } catch (InvocationTargetException exception) {
+            Throwable cause = exception.getCause();
+            if (cause instanceof RuntimeException runtimeException) {
+                throw runtimeException;
+            }
+            if (cause instanceof Error error) {
+                throw error;
+            }
+            throw exception;
+        }
+    }
+
+    private static World worldRecordingTntFuse(List<Integer> fuseTicks) {
+        return proxy(World.class, (proxy, method, arguments) -> {
+            if ("spawn".equals(method.getName())
+                    && arguments != null
+                    && arguments.length == 2
+                    && arguments[1] == TNTPrimed.class) {
+                return tntRecordingFuse(fuseTicks);
+            }
+            return defaultValue(method.getReturnType());
+        });
+    }
+
+    private static TNTPrimed tntRecordingFuse(List<Integer> fuseTicks) {
+        return proxy(TNTPrimed.class, (proxy, method, arguments) -> {
+            if ("setFuseTicks".equals(method.getName())) {
+                fuseTicks.add((Integer) arguments[0]);
+                return null;
+            }
+            return defaultValue(method.getReturnType());
+        });
+    }
+
+    private static Player playerAt(World world, Location location) {
+        return proxy(Player.class, (proxy, method, arguments) -> switch (method.getName()) {
+            case "getWorld" -> world;
+            case "getLocation" -> location.clone();
+            default -> defaultValue(method.getReturnType());
+        });
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T> T proxy(Class<T> type, ThrowingInvocationHandler handler) {
+        return (T) Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[] {type}, (proxy, method, arguments) -> {
+            if (method.getDeclaringClass() == Object.class) {
+                return switch (method.getName()) {
+                    case "toString" -> type.getSimpleName() + " proxy";
+                    case "hashCode" -> System.identityHashCode(proxy);
+                    case "equals" -> proxy == arguments[0];
+                    default -> defaultValue(method.getReturnType());
+                };
+            }
+            return handler.invoke(proxy, method, arguments);
+        });
+    }
+
+    private static Object defaultValue(Class<?> type) {
+        if (type == boolean.class) {
+            return false;
+        }
+        if (type == byte.class) {
+            return (byte) 0;
+        }
+        if (type == short.class) {
+            return (short) 0;
+        }
+        if (type == int.class) {
+            return 0;
+        }
+        if (type == long.class) {
+            return 0L;
+        }
+        if (type == float.class) {
+            return 0.0F;
+        }
+        if (type == double.class) {
+            return 0.0;
+        }
+        if (type == char.class) {
+            return '\0';
+        }
+        return null;
+    }
+
     private static final class FixedRandom extends Random {
         private final Deque<Integer> values;
         private final Deque<Double> doubleValues;
@@ -126,5 +236,25 @@ final class DonationEffectExecutorTest {
             assertTrue(value >= 0.0 && value < 1.0);
             return value;
         }
+    }
+
+    private static final class FirstZeroThenCenterRandom extends Random {
+        private boolean first = true;
+
+        @Override
+        public int nextInt(int bound) {
+            if (first) {
+                first = false;
+                assertEquals(3, bound);
+                return 0;
+            }
+            assertEquals(7, bound);
+            return 3;
+        }
+    }
+
+    @FunctionalInterface
+    private interface ThrowingInvocationHandler {
+        Object invoke(Object proxy, Method method, Object[] arguments) throws Throwable;
     }
 }

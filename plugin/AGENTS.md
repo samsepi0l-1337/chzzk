@@ -11,6 +11,7 @@
 - `plugin/src/main/resources/config.yml` is only the packaged default. Docker writes the real runtime `plugins/ChzzkDonation/config.yml` from `MINECRAFT_WEBHOOK_SECRET`.
 - The effect target is set in game with `/chzzk target set <player>`, not by editing `config.yml`.
 - Donation effects only run when `payAmount` exactly matches a tier: 1000, 2000, 3000, 5000, 10000, 30000, 50000, 100000.
+- The 30,000 won TNT effect spawns 5-7 primed TNT within 3 blocks and sets each fuse to 40 ticks (2 seconds).
 - Bukkit/Paper API side effects must run on the Minecraft main thread.
 - Paper 1.21.1 has `DisplaySlot.SIDEBAR`; do not use nonexistent left-side scoreboard slots.
 
