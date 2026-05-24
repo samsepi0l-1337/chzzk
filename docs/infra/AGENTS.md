@@ -20,6 +20,7 @@
 - If AWS provisioning appears to do nothing, do not bypass the safety gate; review `config/aws-ec2.env` and then set `AWS_EC2_APPLY=true` only when EC2 creation is intended.
 - If AWS deploy needs process supervision, do not add Docker; use `tmux` or `screen` sessions and verify them directly.
 - If Amazon Linux 2023 user-data fails with `curl-minimal` package conflicts, do not retry the same `curl` install; use `curl-minimal` and rerun bootstrap.
+- If AWS deploy fails because Gradle cannot find a Java compiler, do not treat Java 21 runtime as sufficient; install the Corretto 21 `devel` package.
 
 ## Failure Counteraction Rule
 

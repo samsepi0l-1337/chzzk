@@ -24,6 +24,7 @@
 - If Windows Docker Desktop update fails over SSH with `error getting credentials` / `logon session does not exist`, do not reset Docker credentials or repeat `--pull`; use an interactive Windows session or a local-base artifact overlay from verified build outputs.
 - If AWS provision plan output is correct but no EC2 appears, do not retry arbitrary AWS CLI commands; rerun with `AWS_EC2_APPLY=true` or `npm run aws:ec2:provision` after confirming the config.
 - If Amazon Linux 2023 user-data fails with `curl-minimal` conflicts, do not install the `curl` package; rely on the existing `curl-minimal` command or install `curl-minimal` explicitly.
+- If AWS deploy fails at Gradle `javaCompiler`, do not keep `java-21-amazon-corretto-headless`; install `java-21-amazon-corretto-devel` so `javac` exists.
 
 ## Failure Counteraction Rule
 

@@ -88,7 +88,7 @@ bash scripts/aws-ec2-bootstrap.sh
 
 bootstrap은 Amazon Linux 2023에 다음을 설치한다.
 
-- `java-21-amazon-corretto-headless`
+- `java-21-amazon-corretto-devel`
 - `nodejs`, `npm`
 - `git`, `curl`, `tar`
 - `tmux`, `screen`
