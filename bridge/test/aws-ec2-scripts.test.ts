@@ -5,7 +5,7 @@ import { join, resolve } from "node:path";
 import { describe, expect, test } from "vitest";
 
 const repoRoot = resolve(__dirname, "../..");
-const scriptNames = ["aws-ec2-provision.sh", "aws-ec2-user-data.sh", "aws-ec2-bootstrap.sh", "aws-ec2-deploy.sh", "aws-ec2-verify.sh", "aws-ec2-backup.sh"];
+const scriptNames = ["aws-ec2-provision.sh", "aws-ec2-user-data.sh", "aws-ec2-bootstrap.sh", "aws-ec2-deploy.sh", "aws-ec2-pregenerate.sh", "aws-ec2-verify.sh", "aws-ec2-backup.sh"];
 const scriptPaths = scriptNames.map((name) => join(repoRoot, "scripts", name));
 const awsDocsFile = join(repoRoot, "docs/infra/aws-ec2-deployment.md");
 const awsConfigExampleFile = join(repoRoot, "config/aws-ec2.env.example");
@@ -66,6 +66,9 @@ const fakeApplyAws = `#!/usr/bin/env bash
 printf '%s\\n' "$*" >> "$DOCKER_LOG"
 case "$*" in
   *"authorize-security-group-ingress"*) exit 0 ;;
+  *"allocate-address"*) echo eipalloc-1234567890abcdef0; exit 0 ;;
+  *"associate-address"*) echo eipassoc-1234567890abcdef0; exit 0 ;;
+  *"describe-addresses"*) echo 203.0.113.42; exit 0 ;;
   *"run-instances"*) echo i-1234567890abcdef0; exit 0 ;;
   *"wait instance-running"*) exit 0 ;;
   *"describe-instances"*) echo ec2-203-0-113-10.ap-northeast-2.compute.amazonaws.com; exit 0 ;;
@@ -80,6 +83,9 @@ case "$*" in
   *"describe-security-groups"*) echo None; exit 0 ;;
   *"create-security-group"*) echo sg-created; exit 0 ;;
   *"authorize-security-group-ingress"*) exit 0 ;;
+  *"allocate-address"*) echo eipalloc-1234567890abcdef0; exit 0 ;;
+  *"associate-address"*) echo eipassoc-1234567890abcdef0; exit 0 ;;
+  *"describe-addresses"*) echo 203.0.113.42; exit 0 ;;
   *"run-instances"*) echo i-1234567890abcdef0; exit 0 ;;
   *"wait instance-running"*) exit 0 ;;
   *"describe-instances"*) echo ec2-203-0-113-10.ap-northeast-2.compute.amazonaws.com; exit 0 ;;
@@ -124,6 +130,7 @@ describe("AWS EC2 deployment scripts", () => {
 
     expect(config).toContain("AWS_REGION=ap-northeast-2");
     expect(config).toContain("EC2_INSTANCE_TYPE=t4g.xlarge");
+    expect(config).toContain("EC2_ALLOCATE_ELASTIC_IP=true");
     expect(config).toContain("al2023-ami-kernel-default-arm64");
     expect(config).toContain("EC2_KEY_NAME=");
     expect(config).toContain("SSH_CIDR=203.0.113.10/32");
@@ -172,6 +179,8 @@ exit 99
     expect(log).toContain("--port 22 --cidr 203.0.113.10/32");
     expect(log).toContain("--port 25565 --cidr 0.0.0.0/0");
     expect(log).toContain("run-instances");
+    expect(log).toContain("allocate-address");
+    expect(log).toContain("associate-address");
     expect(log).toContain("--metadata-options HttpTokens=required,HttpEndpoint=enabled");
     expect(log).not.toContain("--port 29371");
   });
@@ -225,6 +234,7 @@ exit 99
     const serverProperties = readFileSync(join(runtimeDir, "paper/server.properties"), "utf8");
     expect(serverProperties).toContain("network-compression-threshold=256");
     expect(serverProperties).toContain("use-native-transport=true");
+    expect(serverProperties).toContain("difficulty=easy");
     const paperGlobal = readFileSync(join(runtimeDir, "paper/config/paper-global.yml"), "utf8");
     expect(paperGlobal).toContain("io-threads: 3");
     expect(paperGlobal).toContain("worker-threads: 4");
@@ -373,6 +383,7 @@ exit 1
       "AWS_EC2_APPLY=true bash scripts/aws-ec2-provision.sh"
     );
     expect(rootPackage.scripts["aws:ec2:deploy"]).toBe("bash scripts/aws-ec2-deploy.sh");
+    expect(rootPackage.scripts["aws:ec2:pregenerate"]).toBe("bash scripts/aws-ec2-pregenerate.sh");
     expect(rootPackage.scripts["aws:ec2:verify"]).toBe("bash scripts/aws-ec2-verify.sh");
     expect(rootPackage.scripts["aws:ec2:backup"]).toBe("bash scripts/aws-ec2-backup.sh");
   });

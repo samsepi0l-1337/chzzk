@@ -54,6 +54,8 @@ validate_config() {
   : "${EC2_INSTANCE_TYPE:=t4g.xlarge}"
   : "${EC2_AMI_ID:=resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-arm64}"
   : "${EC2_SECURITY_GROUP_NAME:=chzzk-minecraft}"
+  : "${EC2_ALLOCATE_ELASTIC_IP:=true}"
+  : "${EC2_ELASTIC_IP_ALLOCATION_ID:=}"
   : "${SSH_CIDR:=}"
   : "${MINECRAFT_CIDR:=0.0.0.0/0}"
   : "${ROOT_VOLUME_SIZE_GB:=20}"
@@ -67,6 +69,7 @@ validate_config() {
 
   case "$AWS_EC2_APPLY" in true|false) ;; *) fail "AWS_EC2_APPLY must be true or false" ;; esac
   case "$ALLOW_PUBLIC_SSH" in true|false) ;; *) fail "ALLOW_PUBLIC_SSH must be true or false" ;; esac
+  case "$(lower "$EC2_ALLOCATE_ELASTIC_IP")" in true|false) EC2_ALLOCATE_ELASTIC_IP=$(lower "$EC2_ALLOCATE_ELASTIC_IP") ;; *) fail "EC2_ALLOCATE_ELASTIC_IP must be true or false" ;; esac
   case "$ROOT_VOLUME_DELETE_ON_TERMINATION" in true|false) ;; *) fail "ROOT_VOLUME_DELETE_ON_TERMINATION must be true or false" ;; esac
   case "$ROOT_VOLUME_SIZE_GB" in ''|*[!0-9]*) fail "ROOT_VOLUME_SIZE_GB must be an integer" ;; esac
 
@@ -97,6 +100,7 @@ plan() {
   fi
   log "Region: $AWS_REGION"
   log "Instance: $EC2_INSTANCE_TYPE, AMI: $EC2_AMI_ID, root gp3 ${ROOT_VOLUME_SIZE_GB}GiB"
+  log "Elastic IP: $EC2_ALLOCATE_ELASTIC_IP"
   log "Security group: ${EC2_SECURITY_GROUP_ID:-create-or-reuse $EC2_SECURITY_GROUP_NAME}"
   log "Ingress: SSH 22/tcp from $SSH_CIDR; Minecraft 25565/tcp from $MINECRAFT_CIDR"
   log "Webhook 29371/tcp is intentionally not opened"
@@ -218,6 +222,27 @@ launch_instance() {
   log "Waiting for instance-running: $instance_id"
   run_aws ec2 wait instance-running --instance-ids "$instance_id"
 
+  local elastic_ip=
+  if is_true "$EC2_ALLOCATE_ELASTIC_IP"; then
+    local allocation_id=${EC2_ELASTIC_IP_ALLOCATION_ID:-}
+    if [ -z "$allocation_id" ]; then
+      log "Allocating Elastic IP"
+      allocation_id=$(run_aws ec2 allocate-address \
+        --domain vpc \
+        --tag-specifications "ResourceType=elastic-ip,Tags=[{Key=Name,Value=$EC2_NAME},{Key=Project,Value=chzzk}]" \
+        --query AllocationId \
+        --output text)
+    else
+      log "Using configured Elastic IP allocation: $allocation_id"
+    fi
+    [ -n "$allocation_id" ] && [ "$allocation_id" != "None" ] || fail "allocate-address did not return an allocation id"
+    run_aws ec2 associate-address --instance-id "$instance_id" --allocation-id "$allocation_id" >/dev/null
+    elastic_ip=$(run_aws ec2 describe-addresses \
+      --allocation-ids "$allocation_id" \
+      --query 'Addresses[0].PublicIp' \
+      --output text)
+  fi
+
   local public_dns
   public_dns=$(run_aws ec2 describe-instances \
     --instance-ids "$instance_id" \
@@ -225,6 +250,10 @@ launch_instance() {
     --output text)
 
   log "Created instance: $instance_id"
+  if [ -n "$elastic_ip" ] && [ "$elastic_ip" != "None" ]; then
+    log "Elastic IP: $elastic_ip"
+    log "Minecraft address: $elastic_ip:25565"
+  fi
   log "Public DNS: $public_dns"
   log "Next: ssh -i <key.pem> ec2-user@$public_dns"
 }

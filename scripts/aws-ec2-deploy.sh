@@ -11,9 +11,10 @@ BIN_DIR=${BIN_DIR:-$AWS_RUNTIME_DIR/bin}
 LOG_DIR=${LOG_DIR:-$AWS_RUNTIME_DIR/logs}
 PAPER_VERSION=${PAPER_VERSION:-1.21.1}
 PAPER_BUILD=${PAPER_BUILD:-133}
-PAPER_JAVA_ARGS=${PAPER_JAVA_ARGS:--Xms8G -Xmx10G -XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=200 -XX:+UnlockExperimentalVMOptions -XX:+DisableExplicitGC -XX:+AlwaysPreTouch -XX:G1NewSizePercent=30 -XX:G1MaxNewSizePercent=40 -XX:G1HeapRegionSize=8M -XX:G1ReservePercent=20 -XX:InitiatingHeapOccupancyPercent=15 -XX:+UseStringDeduplication}
-PAPER_VIEW_DISTANCE=${PAPER_VIEW_DISTANCE:-16}
+PAPER_JAVA_ARGS=${PAPER_JAVA_ARGS:--Xms12G -Xmx12G -XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=200 -XX:+UnlockExperimentalVMOptions -XX:+DisableExplicitGC -XX:+AlwaysPreTouch -XX:G1NewSizePercent=30 -XX:G1MaxNewSizePercent=40 -XX:G1HeapRegionSize=8M -XX:G1ReservePercent=20 -XX:InitiatingHeapOccupancyPercent=15 -XX:+UseStringDeduplication}
+PAPER_VIEW_DISTANCE=${PAPER_VIEW_DISTANCE:-12}
 PAPER_SIMULATION_DISTANCE=${PAPER_SIMULATION_DISTANCE:-4}
+PAPER_DIFFICULTY=${PAPER_DIFFICULTY:-easy}
 PAPER_SYNC_CHUNK_WRITES=${PAPER_SYNC_CHUNK_WRITES:-false}
 PAPER_ENTITY_BROADCAST_RANGE=${PAPER_ENTITY_BROADCAST_RANGE:-80}
 PAPER_NETWORK_COMPRESSION_THRESHOLD=${PAPER_NETWORK_COMPRESSION_THRESHOLD:-256}
@@ -151,6 +152,7 @@ set_server_property() {
 write_server_properties() {
   set_server_property view-distance "$PAPER_VIEW_DISTANCE"
   set_server_property simulation-distance "$PAPER_SIMULATION_DISTANCE"
+  set_server_property difficulty "$PAPER_DIFFICULTY"
   set_server_property sync-chunk-writes "$PAPER_SYNC_CHUNK_WRITES"
   set_server_property entity-broadcast-range-percentage "$PAPER_ENTITY_BROADCAST_RANGE"
   set_server_property network-compression-threshold "$PAPER_NETWORK_COMPRESSION_THRESHOLD"

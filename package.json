@@ -16,6 +16,7 @@
     "aws:ec2:plan": "bash scripts/aws-ec2-provision.sh",
     "aws:ec2:provision": "AWS_EC2_APPLY=true bash scripts/aws-ec2-provision.sh",
     "aws:ec2:deploy": "bash scripts/aws-ec2-deploy.sh",
+    "aws:ec2:pregenerate": "bash scripts/aws-ec2-pregenerate.sh",
     "aws:ec2:verify": "bash scripts/aws-ec2-verify.sh",
     "aws:ec2:backup": "bash scripts/aws-ec2-backup.sh"
   }

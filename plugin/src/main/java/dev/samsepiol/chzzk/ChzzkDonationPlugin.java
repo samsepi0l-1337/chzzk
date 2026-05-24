@@ -125,7 +125,7 @@ public final class ChzzkDonationPlugin extends JavaPlugin {
 
     private void startTeleportPreload() {
         teleportPreloadTask =
-                Bukkit.getScheduler().runTaskTimer(this, effectExecutor::prepareTeleportChunks, 20L, 5L);
+                Bukkit.getScheduler().runTaskTimer(this, effectExecutor::prepareTeleportChunks, 20L, 10L);
     }
 
     private Consumer<DonationTier> syncRunner(DonationEffectExecutor executor) {

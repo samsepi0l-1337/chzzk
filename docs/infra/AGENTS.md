@@ -23,7 +23,7 @@
 - If AWS deploy fails because Gradle cannot find a Java compiler, do not treat Java 21 runtime as sufficient; install the Corretto 21 `devel` package.
 - If `ss` reports `[::ffff:127.0.0.1]:29371`, do not open or close ports; treat it as loopback-only IPv4-mapped listening.
 - If chunk loading is slow on AWS, do not raise view distance first; on `t4g.large` use about 5 GiB Paper heap, lower simulation distance, disable sync chunk writes, then scale to `t4g.xlarge`. On `t4g.xlarge`, use about 10 GiB Paper heap and keep simulation distance conservative.
-- If Paper on `t4g.xlarge` still logs `ChunkTaskScheduler` with only 1 I/O and 1 worker thread, do not tune heap again; set `paper-global.yml` chunk-system `io-threads=2`, `worker-threads=3`, raise player chunk load/send rates, and extend `paper-world-defaults.yml` chunk unload delay.
+- If Paper on `t4g.xlarge` still logs `ChunkTaskScheduler` with only 1 I/O and 1 worker thread, do not tune heap again; set `paper-global.yml` chunk-system `io-threads=3`, `worker-threads=4`, raise player chunk load/send rates, and extend `paper-world-defaults.yml` chunk unload delay.
 - If the AWS bridge is optimized for event runtime, do not document `npm run start` as the native deployment path; deploy builds with npm, prunes dev dependencies, then starts `node dist/index.js` directly under tmux/screen.
 
 ## Failure Counteraction Rule

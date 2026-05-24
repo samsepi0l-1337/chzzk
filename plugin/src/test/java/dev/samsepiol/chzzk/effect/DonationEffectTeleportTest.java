@@ -9,9 +9,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.ArrayDeque;
 import java.util.Deque;
-import java.util.List;
 import java.util.Random;
-import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
@@ -29,48 +27,37 @@ final class DonationEffectTeleportTest {
     }
 
     @Test
-    void loadedTeleportChunksFiltersChunksOutsideThousandBlockRange() {
-        Location current = new Location(null, 0, 64, 0);
-
-        List<Chunk> candidates = DonationEffectExecutor.loadedTeleportChunks(
-                current,
-                new Chunk[] {chunkAt(0, 0), chunkAt(62, 0), chunkAt(64, 0), chunkAt(0, -64)});
-
-        assertEquals(2, candidates.size());
-        assertEquals(0, candidates.get(0).getX());
-        assertEquals(62, candidates.get(1).getX());
-    }
-
-    @Test
     void requestTeleportChunksUrgentlyLoadsDestinationAndNearbyChunks() {
         Deque<String> requestedChunks = new ArrayDeque<>();
         World world = worldRecordingRequestedChunks(requestedChunks);
 
         DonationEffectExecutor.requestTeleportChunks(world, 32, -1);
 
-        assertEquals(289, requestedChunks.size());
+        assertEquals(121, requestedChunks.size());
         assertTrue(requestedChunks.contains("2,-1"));
-        assertTrue(requestedChunks.contains("-6,-9"));
-        assertTrue(requestedChunks.contains("10,7"));
+        assertTrue(requestedChunks.contains("-3,-6"));
+        assertTrue(requestedChunks.contains("7,4"));
     }
 
     @Test
-    void prepareTeleportChunksUrgentlyWarmsRandomDestinationArea() {
+    void prepareTeleportChunksPrioritizesCurrentPlayerArea() {
         Deque<String> requestedChunks = new ArrayDeque<>();
         World world = worldRecordingRequestedChunks(requestedChunks);
         Location current = new Location(world, 100.0, 64.0, -100.0);
 
-        DonationEffectExecutor.prepareTeleportChunks(current, new FixedRandom(1000, 1000, 1000, 1000));
+        DonationEffectExecutor.preparePlayerAreaChunks(current);
 
-        assertEquals(578, requestedChunks.size());
+        assertEquals(8, requestedChunks.size());
         assertTrue(requestedChunks.contains("6,-7"));
-        assertTrue(requestedChunks.contains("-2,-15"));
-        assertTrue(requestedChunks.contains("14,1"));
+        assertTrue(requestedChunks.contains("5,-8"));
+        assertTrue(requestedChunks.contains("6,-8"));
+        assertFalse(requestedChunks.contains("-2,-15"));
     }
 
     @Test
-    void picksFreshRandomLoadedTeleportDestinationOnDonation() throws ReflectiveOperationException {
-        World world = worldWithLoadedSurfaceChunk(chunkAt(6, 12));
+    void randomTeleportLoadsSelectedDestinationChunkBeforeFindingSurface() throws ReflectiveOperationException {
+        Deque<String> loadedChunks = new ArrayDeque<>();
+        World world = worldWithLoadedSurfaceChunk(loadedChunks);
         Location current = new Location(world, 0.0, 64.0, 0.0);
         DonationEffectExecutor executor = new DonationEffectExecutor(null, new FixedRandom(1100, 1200));
 
@@ -82,22 +69,7 @@ final class DonationEffectTeleportTest {
         assertEquals(100.5, destination.getX());
         assertEquals(64.0, destination.getY());
         assertEquals(200.5, destination.getZ());
-    }
-
-    @Test
-    void picksLoadedTeleportDestinationBeforeGeneratingNewChunk() throws ReflectiveOperationException {
-        World world = worldWithLoadedSurfaceChunk(chunkAt(2, -1));
-        Location current = new Location(world, 32.0, 64.0, -16.0);
-        DonationEffectExecutor executor = new DonationEffectExecutor(null, new FixedRandom(0, 1, 2));
-
-        Method pickLoadedTeleportDestination =
-                DonationEffectExecutor.class.getDeclaredMethod("pickLoadedTeleportDestination", Location.class);
-        pickLoadedTeleportDestination.setAccessible(true);
-        Location destination = (Location) invokeReturning(pickLoadedTeleportDestination, executor, current);
-
-        assertEquals(33.5, destination.getX());
-        assertEquals(64.0, destination.getY());
-        assertEquals(-13.5, destination.getZ());
+        assertEquals("6,12", loadedChunks.removeFirst());
     }
 
     private static Object invokeReturning(Method method, Object target, Object... arguments)
@@ -130,30 +102,15 @@ final class DonationEffectTeleportTest {
         });
     }
 
-    private static World worldWithLoadedSurfaceChunk(Chunk... chunks) {
+    private static World worldWithLoadedSurfaceChunk(Deque<String> loadedChunks) {
         return proxy(World.class, (proxy, method, arguments) -> switch (method.getName()) {
-            case "getLoadedChunks" -> chunks;
-            case "isChunkLoaded" -> isChunkLoaded(chunks, (Integer) arguments[0], (Integer) arguments[1]);
+            case "getChunkAt" -> {
+                loadedChunks.addLast(arguments[0] + "," + arguments[1]);
+                yield null;
+            }
             case "getMaxHeight" -> 320;
             case "getHighestBlockYAt" -> 63;
             case "getBlockAt" -> blockAt((Integer) arguments[1]);
-            default -> defaultValue(method.getReturnType());
-        });
-    }
-
-    private static boolean isChunkLoaded(Chunk[] chunks, int chunkX, int chunkZ) {
-        for (Chunk chunk : chunks) {
-            if (chunk.getX() == chunkX && chunk.getZ() == chunkZ) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static Chunk chunkAt(int chunkX, int chunkZ) {
-        return proxy(Chunk.class, (proxy, method, arguments) -> switch (method.getName()) {
-            case "getX" -> chunkX;
-            case "getZ" -> chunkZ;
             default -> defaultValue(method.getReturnType());
         });
     }

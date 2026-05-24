@@ -2,7 +2,7 @@
 set -euo pipefail
 
 dnf update -y
-dnf install -y git curl-minimal tar java-21-amazon-corretto-devel nodejs npm tmux screen
+dnf install -y git curl-minimal tar python3 java-21-amazon-corretto-devel nodejs npm tmux screen
 
 mkdir -p /opt/chzzk
 chown ec2-user:ec2-user /opt/chzzk
