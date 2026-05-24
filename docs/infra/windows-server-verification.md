@@ -4,11 +4,11 @@
 
 ## 검증 범위
 
-| 단계 | 목적 | 자동화 가능 여부 |
-| --- | --- | --- |
-| 정적/단위 검증 | bridge, plugin, Docker 설정이 현재 계약을 깨지 않는지 확인 | 가능 |
-| Paper-only 서버 검증 | Windows에서 Minecraft 서버 접속과 plugin webhook readiness 확인 | 가능 |
-| 전체 live 검증 | CHZZK Session, bridge, Paper plugin, 실제 Minecraft 효과까지 확인 | credential과 방송 상태 필요 |
+| 단계                 | 목적                                                              | 자동화 가능 여부            |
+| -------------------- | ----------------------------------------------------------------- | --------------------------- |
+| 정적/단위 검증       | bridge, plugin, Docker 설정이 현재 계약을 깨지 않는지 확인        | 가능                        |
+| Paper-only 서버 검증 | Windows에서 Minecraft 서버 접속과 plugin webhook readiness 확인   | 가능                        |
+| 전체 live 검증       | CHZZK Session, bridge, Paper plugin, 실제 Minecraft 효과까지 확인 | credential과 방송 상태 필요 |
 
 Mac이나 CI에서 통과할 수 있는 것은 Windows 실행 전 사전 조건이다. Windows에서 서버를 실제로 열었다고 주장하려면 Windows 호스트에서 Paper 또는 Docker 컨테이너를 띄우고 Minecraft 접속까지 확인한다.
 
@@ -226,7 +226,7 @@ docker rm -f chzzk-windows-verify
 합격 기준은 `curl.exe` 응답이 다음 JSON을 반환하는 것이다.
 
 ```json
-{"status":"ok"}
+{ "status": "ok" }
 ```
 
 첫 실행은 Paper remap과 world 생성 때문에 1분 이상 걸릴 수 있다. compose healthcheck는 `start_period: 180s`, `retries: 60`, `interval: 5s`를 기준으로 기다린다.
@@ -275,12 +275,12 @@ CHZZK credential과 token store가 준비된 경우에만 실행한다.
 
 ## 실패 신호
 
-| 실패 | 의미 | 확인 문서 |
-| --- | --- | --- |
-| bridge가 즉시 종료 | 필수 env 또는 token store 누락 | [env-reference.md](env-reference.md) |
-| webhook readiness timeout | Paper/plugin webhook 미기동, 포트/경로 불일치, 방화벽 | [windows-local-run.md](windows-local-run.md) |
-| signature 오류 | `MINECRAFT_WEBHOOK_SECRET`과 `webhook.shared-secret` 불일치 | [webhook-protocol.md](../bridge/webhook-protocol.md) |
-| Docker에서 Minecraft 접속 실패 | `25565` publish, Windows 방화벽, 접속 IP 문제 | [docker-deployment.md](docker-deployment.md) |
-| CHZZK 이벤트가 무시됨 | `DONATION.channelId`와 `CHZZK_CHANNEL_ID` 불일치 | [chzzk-auth-and-session.md](../bridge/chzzk-auth-and-session.md) |
+| 실패                           | 의미                                                        | 확인 문서                                                        |
+| ------------------------------ | ----------------------------------------------------------- | ---------------------------------------------------------------- |
+| bridge가 즉시 종료             | 필수 env 또는 token store 누락                              | [env-reference.md](env-reference.md)                             |
+| webhook readiness timeout      | Paper/plugin webhook 미기동, 포트/경로 불일치, 방화벽       | [windows-local-run.md](windows-local-run.md)                     |
+| signature 오류                 | `MINECRAFT_WEBHOOK_SECRET`과 `webhook.shared-secret` 불일치 | [webhook-protocol.md](../bridge/webhook-protocol.md)             |
+| Docker에서 Minecraft 접속 실패 | `25565` publish, Windows 방화벽, 접속 IP 문제               | [docker-deployment.md](docker-deployment.md)                     |
+| CHZZK 이벤트가 무시됨          | `DONATION.channelId`와 `CHZZK_CHANNEL_ID` 불일치            | [chzzk-auth-and-session.md](../bridge/chzzk-auth-and-session.md) |
 
 루트 `auth:*` npm script는 Windows 서버 검증의 필수 경로가 아니다. token bootstrap은 `bridge` 폴더에서 `npm run auth -- --refresh-token "<refresh-token>"`를 사용한다.
