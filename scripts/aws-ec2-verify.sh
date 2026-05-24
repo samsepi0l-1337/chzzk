@@ -58,7 +58,7 @@ webhook_port_loopback_only() {
   local addresses
   addresses=$(port_listen_addresses 29371)
   [ -n "$addresses" ] || fail "webhook port 29371 is not listening"
-  if ! printf '%s\n' "$addresses" | grep -Eq '127\.0\.0\.1:29371|\[::1\]:29371|::1:29371|localhost:29371'; then
+  if ! printf '%s\n' "$addresses" | grep -Eq '127\.0\.0\.1:29371|\[::ffff:127\.0\.0\.1\]:29371|\[::1\]:29371|::1:29371|localhost:29371'; then
     fail "webhook port 29371 must listen on loopback"
   fi
   if printf '%s\n' "$addresses" | grep -Eq '0\.0\.0\.0:29371|\*:29371|\[::\]:29371|:::29371'; then

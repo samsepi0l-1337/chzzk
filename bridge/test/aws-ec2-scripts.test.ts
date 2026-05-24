@@ -287,7 +287,7 @@ exit 99
     const fakeSs = `#!/usr/bin/env bash
 printf 'State Recv-Q Send-Q Local Address:Port Peer Address:Port\\n'
 printf 'LISTEN 0 128 0.0.0.0:25565 0.0.0.0:*\\n'
-printf 'LISTEN 0 128 127.0.0.1:29371 0.0.0.0:*\\n'
+printf 'LISTEN 0 128 [::ffff:127.0.0.1]:29371 0.0.0.0:*\\n'
 `;
     const fakeHealthCurl = `#!/usr/bin/env bash
 printf 'curl %s\\n' "$*" >> "$DOCKER_LOG"

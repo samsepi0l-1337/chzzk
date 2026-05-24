@@ -147,9 +147,13 @@ override 가능한 주요 값:
 
 ```bash
 AWS_PROCESS_MANAGER=screen
-PAPER_JAVA_ARGS="-Xms1G -Xmx1G"
+PAPER_JAVA_ARGS="-Xms4G -Xmx5G -XX:+UseG1GC"
+PAPER_VIEW_DISTANCE=8
+PAPER_SIMULATION_DISTANCE=6
 AWS_RUNTIME_DIR=/srv/chzzk-runtime
 ```
+
+`t4g.large`는 2 vCPU/8 GiB라 Paper에 5 GiB 이상을 주지 않는다. 청크 로딩이 느릴 때는 view distance를 무작정 올리기보다 `view-distance=8`, `simulation-distance=6`, `sync-chunk-writes=false`로 청크 생성 부하를 줄인 뒤에도 부족하면 `t4g.xlarge`로 올린다.
 
 ## Verify
 

@@ -21,6 +21,8 @@
 - If AWS deploy needs process supervision, do not add Docker; use `tmux` or `screen` sessions and verify them directly.
 - If Amazon Linux 2023 user-data fails with `curl-minimal` package conflicts, do not retry the same `curl` install; use `curl-minimal` and rerun bootstrap.
 - If AWS deploy fails because Gradle cannot find a Java compiler, do not treat Java 21 runtime as sufficient; install the Corretto 21 `devel` package.
+- If `ss` reports `[::ffff:127.0.0.1]:29371`, do not open or close ports; treat it as loopback-only IPv4-mapped listening.
+- If chunk loading is slow on `t4g.large`, do not raise view distance first; use about 5 GiB Paper heap, lower simulation distance, disable sync chunk writes, then consider `t4g.xlarge`.
 
 ## Failure Counteraction Rule
 

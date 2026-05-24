@@ -25,6 +25,8 @@
 - If AWS provision plan output is correct but no EC2 appears, do not retry arbitrary AWS CLI commands; rerun with `AWS_EC2_APPLY=true` or `npm run aws:ec2:provision` after confirming the config.
 - If Amazon Linux 2023 user-data fails with `curl-minimal` conflicts, do not install the `curl` package; rely on the existing `curl-minimal` command or install `curl-minimal` explicitly.
 - If AWS deploy fails at Gradle `javaCompiler`, do not keep `java-21-amazon-corretto-headless`; install `java-21-amazon-corretto-devel` so `javac` exists.
+- If AWS verify sees `[::ffff:127.0.0.1]:29371`, do not treat it as public exposure; it is IPv4-mapped loopback and should pass loopback-only verification.
+- If Paper chunk loading is slow on AWS `t4g.large`, do not only add RAM; keep heap near `-Xmx5G`, lower simulation distance, disable sync chunk writes, and scale to `t4g.xlarge` if CPU-bound lag remains.
 
 ## Failure Counteraction Rule
 

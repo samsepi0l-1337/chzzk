@@ -11,7 +11,11 @@ BIN_DIR=${BIN_DIR:-$AWS_RUNTIME_DIR/bin}
 LOG_DIR=${LOG_DIR:-$AWS_RUNTIME_DIR/logs}
 PAPER_VERSION=${PAPER_VERSION:-1.21.1}
 PAPER_BUILD=${PAPER_BUILD:-133}
-PAPER_JAVA_ARGS=${PAPER_JAVA_ARGS:--Xms1G -Xmx1G}
+PAPER_JAVA_ARGS=${PAPER_JAVA_ARGS:--Xms4G -Xmx5G -XX:+UseG1GC}
+PAPER_VIEW_DISTANCE=${PAPER_VIEW_DISTANCE:-8}
+PAPER_SIMULATION_DISTANCE=${PAPER_SIMULATION_DISTANCE:-6}
+PAPER_SYNC_CHUNK_WRITES=${PAPER_SYNC_CHUNK_WRITES:-false}
+PAPER_ENTITY_BROADCAST_RANGE=${PAPER_ENTITY_BROADCAST_RANGE:-80}
 PAPER_SESSION=${PAPER_SESSION:-chzzk-paper}
 BRIDGE_SESSION=${BRIDGE_SESSION:-chzzk-bridge}
 AWS_PROCESS_MANAGER=${AWS_PROCESS_MANAGER:-}
@@ -118,6 +122,25 @@ EOF
   rm -f "$secret_file"
 }
 
+set_server_property() {
+  local key=$1
+  local value=$2
+  local file=$PAPER_DIR/server.properties
+  touch "$file"
+  if grep -q "^${key}=" "$file"; then
+    sed -i "s/^${key}=.*/${key}=${value}/" "$file"
+  else
+    printf '%s=%s\n' "$key" "$value" >> "$file"
+  fi
+}
+
+write_server_properties() {
+  set_server_property view-distance "$PAPER_VIEW_DISTANCE"
+  set_server_property simulation-distance "$PAPER_SIMULATION_DISTANCE"
+  set_server_property sync-chunk-writes "$PAPER_SYNC_CHUNK_WRITES"
+  set_server_property entity-broadcast-range-percentage "$PAPER_ENTITY_BROADCAST_RANGE"
+}
+
 write_starters() {
   local env_source=
   if [ -f "$ENV_FILE_PATH" ]; then
@@ -193,6 +216,7 @@ fi
 
 cp "$plugin_jar" "$PAPER_DIR/plugins/chzzk-donation.jar"
 printf 'eula=true\n' > "$PAPER_DIR/eula.txt"
+write_server_properties
 write_paper_config
 
 log "Installing and building bridge"
