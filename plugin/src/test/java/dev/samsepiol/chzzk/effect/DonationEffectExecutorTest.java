@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Random;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
@@ -96,7 +97,7 @@ final class DonationEffectExecutorTest {
     @Test
     void spawnedTntUsesTwoSecondFuse() throws ReflectiveOperationException {
         List<Integer> fuseTicks = new ArrayList<>();
-        World world = worldRecordingTntFuse(fuseTicks);
+        World world = worldRecordingTntFuse(fuseTicks, new ArrayList<>());
         Player target = playerAt(world, new Location(world, 10.0, 64.0, -20.0));
         DonationEffectExecutor executor = new DonationEffectExecutor(null, new FirstZeroThenCenterRandom());
 
@@ -107,9 +108,30 @@ final class DonationEffectExecutorTest {
         assertEquals(List.of(40, 40, 40, 40, 40), fuseTicks);
     }
 
+    @Test
+    void spawnedTntPlaysPrimedSound() throws ReflectiveOperationException {
+        List<Sound> worldSounds = new ArrayList<>();
+        List<Sound> playerSounds = new ArrayList<>();
+        World world = worldRecordingTntFuse(new ArrayList<>(), worldSounds);
+        Player target = playerAt(world, new Location(world, 10.0, 64.0, -20.0), playerSounds);
+        DonationEffectExecutor executor = new DonationEffectExecutor(null, new FirstZeroThenCenterRandom());
+
+        Method spawnTnt = DonationEffectExecutor.class.getDeclaredMethod("spawnTnt", Player.class);
+        spawnTnt.setAccessible(true);
+        invoke(spawnTnt, executor, target);
+
+        assertEquals(List.of(Sound.ENTITY_TNT_PRIMED), worldSounds);
+        assertEquals(List.of(Sound.ENTITY_TNT_PRIMED), playerSounds);
+    }
+
     private static void invoke(Method method, Object target, Object... arguments) throws ReflectiveOperationException {
+        invokeReturning(method, target, arguments);
+    }
+
+    private static Object invokeReturning(Method method, Object target, Object... arguments)
+            throws ReflectiveOperationException {
         try {
-            method.invoke(target, arguments);
+            return method.invoke(target, arguments);
         } catch (InvocationTargetException exception) {
             Throwable cause = exception.getCause();
             if (cause instanceof RuntimeException runtimeException) {
@@ -122,13 +144,20 @@ final class DonationEffectExecutorTest {
         }
     }
 
-    private static World worldRecordingTntFuse(List<Integer> fuseTicks) {
+    private static World worldRecordingTntFuse(List<Integer> fuseTicks, List<Sound> sounds) {
         return proxy(World.class, (proxy, method, arguments) -> {
             if ("spawn".equals(method.getName())
                     && arguments != null
                     && arguments.length == 2
                     && arguments[1] == TNTPrimed.class) {
                 return tntRecordingFuse(fuseTicks);
+            }
+            if ("playSound".equals(method.getName())
+                    && arguments != null
+                    && arguments.length == 4
+                    && arguments[1] instanceof Sound sound) {
+                sounds.add(sound);
+                return null;
             }
             return defaultValue(method.getReturnType());
         });
@@ -145,9 +174,19 @@ final class DonationEffectExecutorTest {
     }
 
     private static Player playerAt(World world, Location location) {
+        return playerAt(world, location, new ArrayList<>());
+    }
+
+    private static Player playerAt(World world, Location location, List<Sound> sounds) {
         return proxy(Player.class, (proxy, method, arguments) -> switch (method.getName()) {
             case "getWorld" -> world;
             case "getLocation" -> location.clone();
+            case "playSound" -> {
+                if (arguments != null && arguments.length == 4 && arguments[1] instanceof Sound sound) {
+                    sounds.add(sound);
+                }
+                yield null;
+            }
             default -> defaultValue(method.getReturnType());
         });
     }

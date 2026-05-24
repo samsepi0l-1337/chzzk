@@ -1,13 +1,13 @@
 # AWS EC2 Deployment
 
-이 문서는 CHZZK Donation Minecraft 스택을 단일 EC2 인스턴스에서 **Docker 없이** 실행하는 절차다. EC2 생성은 AWS CLI helper로 준비하고, 런타임은 Paper 서버와 Node bridge를 `tmux` 또는 `screen` detached session으로 띄운다. 기본 목표는 `t4g.large` Graviton 인스턴스로 약 10시간 이벤트성 운영을 하는 것이다.
+이 문서는 CHZZK Donation Minecraft 스택을 단일 EC2 인스턴스에서 **Docker 없이** 실행하는 절차다. EC2 생성은 AWS CLI helper로 준비하고, 런타임은 Paper 서버와 Node bridge를 `tmux` 또는 `screen` detached session으로 띄운다. 기본 목표는 `t4g.xlarge` Graviton 인스턴스로 약 10시간 이벤트성 운영을 하는 것이다.
 
 ## 결론
 
 운영 기준:
 
 - Paper/Minecraft는 1.21.1, Java는 21이다.
-- EC2는 `t4g.large`와 Amazon Linux 2023 arm64 AMI를 기본값으로 쓴다.
+- EC2는 `t4g.xlarge`와 Amazon Linux 2023 arm64 AMI를 기본값으로 쓴다.
 - AWS security group은 SSH 관리 포트와 Minecraft `25565/tcp`만 연다.
 - plugin webhook `29371/tcp`는 EC2 host의 loopback(`127.0.0.1`) 전용이다. security group에 열지 않는다.
 - bridge 기동에는 token store 또는 `CHZZK_REFRESH_TOKEN`이 필요하다.
@@ -40,7 +40,7 @@ SSH_CIDR=your-public-ip/32
 기본값:
 
 - `AWS_REGION=ap-northeast-2`
-- `EC2_INSTANCE_TYPE=t4g.large`
+- `EC2_INSTANCE_TYPE=t4g.xlarge`
 - `EC2_AMI_ID=resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-arm64`
 - `MINECRAFT_CIDR=0.0.0.0/0`
 - `ROOT_VOLUME_SIZE_GB=20`
@@ -147,13 +147,26 @@ override 가능한 주요 값:
 
 ```bash
 AWS_PROCESS_MANAGER=screen
-PAPER_JAVA_ARGS="-Xms4G -Xmx5G -XX:+UseG1GC"
-PAPER_VIEW_DISTANCE=8
+PAPER_JAVA_ARGS="-Xms8G -Xmx10G -XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=200"
+PAPER_VIEW_DISTANCE=14
 PAPER_SIMULATION_DISTANCE=6
+PAPER_NETWORK_COMPRESSION_THRESHOLD=512
+PAPER_USE_NATIVE_TRANSPORT=true
+PAPER_CHUNK_IO_THREADS=2
+PAPER_CHUNK_WORKER_THREADS=3
+PAPER_CHUNK_LOAD_RATE=1200.0
+PAPER_CHUNK_SEND_RATE=800.0
+PAPER_CHUNK_GENERATE_RATE=180.0
+PAPER_PLAYER_MAX_CONCURRENT_CHUNK_LOADS=32
+PAPER_PLAYER_MAX_CONCURRENT_CHUNK_GENERATES=10
+PAPER_DELAY_CHUNK_UNLOADS_BY=60s
+BRIDGE_NODE_ENV=production
+BRIDGE_NODE_OPTIONS="--max-old-space-size=256"
+BRIDGE_UV_THREADPOOL_SIZE=2
 AWS_RUNTIME_DIR=/srv/chzzk-runtime
 ```
 
-`t4g.large`는 2 vCPU/8 GiB라 Paper에 5 GiB 이상을 주지 않는다. 청크 로딩이 느릴 때는 view distance를 무작정 올리기보다 `view-distance=8`, `simulation-distance=6`, `sync-chunk-writes=false`로 청크 생성 부하를 줄인 뒤에도 부족하면 `t4g.xlarge`로 올린다.
+`t4g.xlarge`는 4 vCPU/16 GiB라 Paper에 10 GiB 정도를 배정하고 OS, bridge, build 작업을 위한 여유 메모리를 남긴다. 배포 스크립트는 `paper-global.yml`의 chunk I/O/worker thread와 player chunk load/send/generate rate를 이벤트 서버 기준으로 올리고, `paper-world-defaults.yml`의 chunk unload delay를 늘려 이미 보낸 청크가 더 오래 유지되게 한다. `network-compression-threshold=512`는 네트워크 압축 CPU 사용을 줄이고, `use-native-transport=true`는 Linux epoll 경로를 명시한다. bridge는 빌드 후 dev dependency를 prune하고 `npm` wrapper 없이 `node dist/index.js`를 `NODE_ENV=production`, 작은 heap, 작은 libuv threadpool로 실행한다. 플러그인은 target이 online일 때 랜덤 TP 후보 청크를 계속 미리 urgent load 요청한다. 청크 로딩이 여전히 느리면 `simulation-distance=6`, `sync-chunk-writes=false`를 유지하고 새 지형 탐험 인원 또는 월드 생성 부하를 줄인다.
 
 ## Verify
 

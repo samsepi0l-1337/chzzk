@@ -2,13 +2,17 @@ package dev.samsepiol.chzzk.effect;
 
 import dev.samsepiol.chzzk.donation.DonationTier;
 import dev.samsepiol.chzzk.state.TargetService;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
+import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
@@ -17,8 +21,10 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.potion.PotionEffect;
 
 public final class DonationEffectExecutor implements Consumer<DonationTier> {
-    private static final int MAX_TELEPORT_PLACEMENT_ATTEMPTS = 32;
+    private static final int MAX_LOADED_TELEPORT_PLACEMENT_ATTEMPTS = 160;
     private static final int RANDOM_TELEPORT_HORIZONTAL_RANGE = 1000;
+    static final int TELEPORT_PRELOAD_CHUNK_RADIUS = 8;
+    static final int TELEPORT_PRELOAD_COLUMNS_PER_TICK = 2;
     static final int TNT_SPAWN_RADIUS = 3;
     static final int TNT_MIN_SPAWNS = 5;
     static final int TNT_MAX_SPAWNS = 7;
@@ -57,6 +63,10 @@ public final class DonationEffectExecutor implements Consumer<DonationTier> {
         return pluginKills.remove(uuid);
     }
 
+    public void prepareTeleportChunks() {
+        targetService.onlineTarget().ifPresent(target -> prepareTeleportChunks(target.getLocation(), random));
+    }
+
     private void applyRandomBuff(Player target) {
         target.addPotionEffect(new PotionEffect(pick(RandomPools.buffs()), 20 * 30, 0));
     }
@@ -84,10 +94,17 @@ public final class DonationEffectExecutor implements Consumer<DonationTier> {
 
     private void spawnTnt(Player target) {
         int count = pickTntSpawnCount(random);
+        playTntPrimedSound(target);
         for (int index = 0; index < count; index += 1) {
             TNTPrimed tnt = target.getWorld().spawn(pickTntSpawnLocation(target.getLocation(), random), TNTPrimed.class);
             tnt.setFuseTicks(TNT_FUSE_TICKS);
         }
+    }
+
+    private static void playTntPrimedSound(Player target) {
+        Location location = target.getLocation();
+        target.getWorld().playSound(location, Sound.ENTITY_TNT_PRIMED, 4.0F, 1.0F);
+        target.playSound(location, Sound.ENTITY_TNT_PRIMED, 4.0F, 1.0F);
     }
 
     static int pickTntSpawnCount(Random random) {
@@ -111,20 +128,69 @@ public final class DonationEffectExecutor implements Consumer<DonationTier> {
     }
 
     private void teleportRandomly(Player target) {
-        target.teleport(pickRandomTeleportDestination(target.getLocation()));
+        Location destination = pickRandomTeleportDestination(target.getLocation());
+        requestTeleportChunks(destination.getWorld(), destination.getBlockX(), destination.getBlockZ());
+        target.teleport(destination);
+        target.getWorld().playSound(destination, Sound.ENTITY_ENDERMAN_TELEPORT, 1.0F, 1.0F);
     }
 
     private Location pickRandomTeleportDestination(Location current) {
+        Location loadedRandomDestination = pickRandomLoadedTeleportDestination(current);
+        if (loadedRandomDestination != null) {
+            return loadedRandomDestination;
+        }
+        loadedRandomDestination = pickLoadedTeleportDestination(current);
+        return loadedRandomDestination == null ? current.clone() : loadedRandomDestination;
+    }
+
+    private Location pickLoadedTeleportDestination(Location current) {
+        World world = current.getWorld();
+        Chunk[] loadedChunks = world.getLoadedChunks();
+        if (loadedChunks.length == 0) {
+            return null;
+        }
+        List<Chunk> candidates = loadedTeleportChunks(current, loadedChunks);
+        if (candidates.isEmpty()) {
+            return null;
+        }
+
+        int maxY = world.getMaxHeight() - 2;
+        for (int attempt = 0; attempt < MAX_LOADED_TELEPORT_PLACEMENT_ATTEMPTS; attempt += 1) {
+            Chunk chunk = candidates.get(random.nextInt(candidates.size()));
+            int blockX = chunk.getX() * 16 + random.nextInt(16);
+            int blockZ = chunk.getZ() * 16 + random.nextInt(16);
+            int feetY = world.getHighestBlockYAt(blockX, blockZ) + 1;
+            if (feetY <= maxY && isValidPlayerTeleportPlacement(world, blockX, feetY, blockZ)) {
+                return new Location(world, blockX + 0.5, feetY, blockZ + 0.5);
+            }
+        }
+        return null;
+    }
+
+    private Location pickRandomLoadedTeleportDestination(Location current) {
         World world = current.getWorld();
         int maxY = world.getMaxHeight() - 2;
-        for (int attempt = 0; attempt < MAX_TELEPORT_PLACEMENT_ATTEMPTS; attempt += 1) {
+        for (int attempt = 0; attempt < MAX_LOADED_TELEPORT_PLACEMENT_ATTEMPTS; attempt += 1) {
             BlockColumn column = pickRandomBlockColumn(current, random);
+            if (!world.isChunkLoaded(column.blockX() >> 4, column.blockZ() >> 4)) {
+                continue;
+            }
             int feetY = world.getHighestBlockYAt(column.blockX(), column.blockZ()) + 1;
             if (feetY <= maxY && isValidPlayerTeleportPlacement(world, column.blockX(), feetY, column.blockZ())) {
                 return new Location(world, column.blockX() + 0.5, feetY, column.blockZ() + 0.5);
             }
         }
-        throw new IllegalStateException("Unable to find teleport placement");
+        return null;
+    }
+
+    static List<Chunk> loadedTeleportChunks(Location current, Chunk[] loadedChunks) {
+        List<Chunk> candidates = new ArrayList<>();
+        for (Chunk chunk : loadedChunks) {
+            if (isChunkWithinTeleportRange(current, chunk.getX(), chunk.getZ())) {
+                candidates.add(chunk);
+            }
+        }
+        return candidates;
     }
 
     static BlockColumn pickRandomBlockColumn(Location current, Random random) {
@@ -146,6 +212,39 @@ public final class DonationEffectExecutor implements Consumer<DonationTier> {
         return minInclusive + random.nextInt(maxInclusive - minInclusive + 1);
     }
 
+    static boolean isWithinTeleportRange(Location current, int blockX, int blockZ) {
+        return Math.abs(blockX - current.getBlockX()) <= RANDOM_TELEPORT_HORIZONTAL_RANGE
+                && Math.abs(blockZ - current.getBlockZ()) <= RANDOM_TELEPORT_HORIZONTAL_RANGE;
+    }
+
+    static boolean isChunkWithinTeleportRange(Location current, int chunkX, int chunkZ) {
+        int minX = chunkX * 16;
+        int maxX = minX + 15;
+        int minZ = chunkZ * 16;
+        int maxZ = minZ + 15;
+        return maxX >= current.getBlockX() - RANDOM_TELEPORT_HORIZONTAL_RANGE
+                && minX <= current.getBlockX() + RANDOM_TELEPORT_HORIZONTAL_RANGE
+                && maxZ >= current.getBlockZ() - RANDOM_TELEPORT_HORIZONTAL_RANGE
+                && minZ <= current.getBlockZ() + RANDOM_TELEPORT_HORIZONTAL_RANGE;
+    }
+
+    static void requestTeleportChunks(World world, int blockX, int blockZ) {
+        int chunkX = blockX >> 4;
+        int chunkZ = blockZ >> 4;
+        for (int offsetX = -TELEPORT_PRELOAD_CHUNK_RADIUS; offsetX <= TELEPORT_PRELOAD_CHUNK_RADIUS; offsetX += 1) {
+            for (int offsetZ = -TELEPORT_PRELOAD_CHUNK_RADIUS; offsetZ <= TELEPORT_PRELOAD_CHUNK_RADIUS; offsetZ += 1) {
+                world.getChunkAtAsyncUrgently(chunkX + offsetX, chunkZ + offsetZ);
+            }
+        }
+    }
+
+    static void prepareTeleportChunks(Location current, Random random) {
+        for (int index = 0; index < TELEPORT_PRELOAD_COLUMNS_PER_TICK; index += 1) {
+            BlockColumn column = pickRandomBlockColumn(current, random);
+            requestTeleportChunks(current.getWorld(), column.blockX(), column.blockZ());
+        }
+    }
+
     static boolean isValidPlayerTeleportPlacement(World world, int blockX, int feetY, int blockZ) {
         var feet = world.getBlockAt(blockX, feetY, blockZ);
         var below = world.getBlockAt(blockX, feetY - 1, blockZ);
@@ -156,7 +255,7 @@ public final class DonationEffectExecutor implements Consumer<DonationTier> {
         if (feet.isLiquid() || head.isLiquid()) {
             return false;
         }
-        return below.getType().isSolid();
+        return !below.isPassable() && !below.isLiquid();
     }
 
     static boolean isValidPlayerTeleportPlacement(

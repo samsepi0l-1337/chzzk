@@ -5,14 +5,7 @@ import { join, resolve } from "node:path";
 import { describe, expect, test } from "vitest";
 
 const repoRoot = resolve(__dirname, "../..");
-const scriptNames = [
-  "aws-ec2-provision.sh",
-  "aws-ec2-user-data.sh",
-  "aws-ec2-bootstrap.sh",
-  "aws-ec2-deploy.sh",
-  "aws-ec2-verify.sh",
-  "aws-ec2-backup.sh"
-];
+const scriptNames = ["aws-ec2-provision.sh", "aws-ec2-user-data.sh", "aws-ec2-bootstrap.sh", "aws-ec2-deploy.sh", "aws-ec2-verify.sh", "aws-ec2-backup.sh"];
 const scriptPaths = scriptNames.map((name) => join(repoRoot, "scripts", name));
 const awsDocsFile = join(repoRoot, "docs/infra/aws-ec2-deployment.md");
 const awsConfigExampleFile = join(repoRoot, "config/aws-ec2.env.example");
@@ -60,16 +53,7 @@ exit 1
 `;
 
 const deployEnv = { EULA: "true", CHZZK_CLIENT_ID: "client", CHZZK_CLIENT_SECRET: "secret", CHZZK_CHANNEL_ID: "channel", MINECRAFT_WEBHOOK_SECRET: "webhook" };
-const provisionBaseConfig = [
-  "AWS_REGION=ap-northeast-2",
-  "AWS_EC2_APPLY=false",
-  "EC2_INSTANCE_TYPE=t4g.large",
-  "EC2_KEY_NAME=test-key",
-  "SSH_CIDR=203.0.113.10/32",
-  "MINECRAFT_CIDR=0.0.0.0/0",
-  "ROOT_VOLUME_SIZE_GB=20",
-  "EC2_USER_DATA_FILE="
-];
+const provisionBaseConfig = ["AWS_REGION=ap-northeast-2", "AWS_EC2_APPLY=false", "EC2_INSTANCE_TYPE=t4g.xlarge", "EC2_KEY_NAME=test-key", "SSH_CIDR=203.0.113.10/32", "MINECRAFT_CIDR=0.0.0.0/0", "ROOT_VOLUME_SIZE_GB=20", "EC2_USER_DATA_FILE="];
 
 function writeTempAwsConfig(prefix: string, extraLines: string[] = []) {
   const tempDir = mkdtempSync(join(tmpdir(), prefix));
@@ -139,7 +123,7 @@ describe("AWS EC2 deployment scripts", () => {
     const config = readFileSync(awsConfigExampleFile, "utf8");
 
     expect(config).toContain("AWS_REGION=ap-northeast-2");
-    expect(config).toContain("EC2_INSTANCE_TYPE=t4g.large");
+    expect(config).toContain("EC2_INSTANCE_TYPE=t4g.xlarge");
     expect(config).toContain("al2023-ami-kernel-default-arm64");
     expect(config).toContain("EC2_KEY_NAME=");
     expect(config).toContain("SSH_CIDR=203.0.113.10/32");
@@ -232,13 +216,30 @@ exit 99
     expect(result.stderr).not.toContain("missing");
     expect(log).toContain("gradle --no-daemon :plugin:shadowJar");
     expect(log).toContain("npm --prefix");
+    expect(log).toContain("prune --omit=dev");
     expect(log).toContain("curl -fsSL");
     expect(log).toContain("tmux new-session -d -s chzzk-paper");
     expect(log).toContain("tmux new-session -d -s chzzk-bridge");
     expect(log).not.toContain("compose");
     expect(readFileSync(join(runtimeDir, "paper/plugins/ChzzkDonation/config.yml"), "utf8")).toContain('host: "127.0.0.1"');
-    expect(existsSync(join(runtimeDir, "bin/start-paper.sh"))).toBe(true);
-    expect(existsSync(join(runtimeDir, "bin/start-bridge.sh"))).toBe(true);
+    const serverProperties = readFileSync(join(runtimeDir, "paper/server.properties"), "utf8");
+    expect(serverProperties).toContain("network-compression-threshold=512");
+    expect(serverProperties).toContain("use-native-transport=true");
+    const paperGlobal = readFileSync(join(runtimeDir, "paper/config/paper-global.yml"), "utf8");
+    expect(paperGlobal).toContain("io-threads: 2");
+    expect(paperGlobal).toContain("worker-threads: 3");
+    expect(paperGlobal).toContain("player-max-chunk-load-rate: 1200.0");
+    expect(paperGlobal).toContain("player-max-chunk-send-rate: 800.0");
+    expect(paperGlobal).toContain("player-max-concurrent-chunk-loads: 32");
+    const paperWorldDefaults = readFileSync(join(runtimeDir, "paper/config/paper-world-defaults.yml"), "utf8");
+    expect(paperWorldDefaults).toContain("delay-chunk-unloads-by: 60s");
+    const bridgeStarter = readFileSync(join(runtimeDir, "bin/start-bridge.sh"), "utf8");
+    expect(bridgeStarter).toContain('export NODE_ENV="production"');
+    expect(bridgeStarter).toContain('export NODE_OPTIONS="--max-old-space-size=256"');
+    expect(bridgeStarter).toContain('export UV_THREADPOOL_SIZE="2"');
+    expect(bridgeStarter).toContain('exec "node"');
+    expect(bridgeStarter).toContain("dist/index.js");
+    expect(bridgeStarter).not.toContain("npm\" run start");
     rmSync(runtimeDir, { recursive: true, force: true });
   });
 
@@ -276,6 +277,7 @@ exit 99
     expect(result.status).toBe(0);
     expect(bridgeStarter).toContain(`. "${envFile}"`);
     expect(bridgeStarter).toContain("CHZZK_TOKEN_STORE");
+    expect(bridgeStarter).toContain("NODE_ENV");
     expect(log).not.toContain("compose");
   });
 

@@ -26,7 +26,9 @@
 - If Amazon Linux 2023 user-data fails with `curl-minimal` conflicts, do not install the `curl` package; rely on the existing `curl-minimal` command or install `curl-minimal` explicitly.
 - If AWS deploy fails at Gradle `javaCompiler`, do not keep `java-21-amazon-corretto-headless`; install `java-21-amazon-corretto-devel` so `javac` exists.
 - If AWS verify sees `[::ffff:127.0.0.1]:29371`, do not treat it as public exposure; it is IPv4-mapped loopback and should pass loopback-only verification.
-- If Paper chunk loading is slow on AWS `t4g.large`, do not only add RAM; keep heap near `-Xmx5G`, lower simulation distance, disable sync chunk writes, and scale to `t4g.xlarge` if CPU-bound lag remains.
+- If Paper chunk loading is slow on AWS, do not only add RAM; on `t4g.large` keep heap near `-Xmx5G`, lower simulation distance, disable sync chunk writes, and scale to `t4g.xlarge` if CPU-bound lag remains. On `t4g.xlarge`, keep heap near `-Xmx10G` and leave OS/bridge headroom.
+- If `t4g.xlarge` keeps chunk loading at 1 I/O and 1 worker thread, encode Paper `paper-global.yml` chunk-system/thread, player chunk rate, and world chunk unload-delay overrides in the deploy script instead of editing runtime YAML manually.
+- If the AWS bridge consumes extra CPU/memory under event load, do not keep it behind `npm run start`; run `node dist/index.js` directly with production env and bounded `NODE_OPTIONS`, then prune dev dependencies after build.
 
 ## Failure Counteraction Rule
 

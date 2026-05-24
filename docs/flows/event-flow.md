@@ -88,7 +88,7 @@ plugin의 `DonationService`는 효과 실행이 성공한 뒤에만 `eventId`를
 
 - webhook thread에서 Bukkit world/player mutation을 하지 않는다.
 - `sidebarService.update()`가 효과 실행 뒤 메인 스레드에서 호출된다.
-- timeout은 현재 5초다. 효과가 길어지면 webhook latency와 실패 처리를 같이 재검토한다.
+- target availability timeout은 5초, 효과 실행 timeout은 20초다. 효과가 더 길어지면 webhook latency와 실패 처리를 같이 재검토한다.
 
 ## 변경 시 체크리스트
 

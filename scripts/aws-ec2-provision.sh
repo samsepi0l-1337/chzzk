@@ -51,7 +51,7 @@ validate_config() {
 
   : "${AWS_REGION:=ap-northeast-2}"
   : "${EC2_NAME:=chzzk-minecraft}"
-  : "${EC2_INSTANCE_TYPE:=t4g.large}"
+  : "${EC2_INSTANCE_TYPE:=t4g.xlarge}"
   : "${EC2_AMI_ID:=resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-arm64}"
   : "${EC2_SECURITY_GROUP_NAME:=chzzk-minecraft}"
   : "${SSH_CIDR:=}"

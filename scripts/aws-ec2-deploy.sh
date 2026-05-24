@@ -11,16 +11,30 @@ BIN_DIR=${BIN_DIR:-$AWS_RUNTIME_DIR/bin}
 LOG_DIR=${LOG_DIR:-$AWS_RUNTIME_DIR/logs}
 PAPER_VERSION=${PAPER_VERSION:-1.21.1}
 PAPER_BUILD=${PAPER_BUILD:-133}
-PAPER_JAVA_ARGS=${PAPER_JAVA_ARGS:--Xms4G -Xmx5G -XX:+UseG1GC}
-PAPER_VIEW_DISTANCE=${PAPER_VIEW_DISTANCE:-8}
-PAPER_SIMULATION_DISTANCE=${PAPER_SIMULATION_DISTANCE:-6}
+PAPER_JAVA_ARGS=${PAPER_JAVA_ARGS:--Xms8G -Xmx10G -XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=200 -XX:+UnlockExperimentalVMOptions -XX:+DisableExplicitGC -XX:+AlwaysPreTouch -XX:G1NewSizePercent=30 -XX:G1MaxNewSizePercent=40 -XX:G1HeapRegionSize=8M -XX:G1ReservePercent=20 -XX:InitiatingHeapOccupancyPercent=15 -XX:+UseStringDeduplication}
+PAPER_VIEW_DISTANCE=${PAPER_VIEW_DISTANCE:-16}
+PAPER_SIMULATION_DISTANCE=${PAPER_SIMULATION_DISTANCE:-4}
 PAPER_SYNC_CHUNK_WRITES=${PAPER_SYNC_CHUNK_WRITES:-false}
 PAPER_ENTITY_BROADCAST_RANGE=${PAPER_ENTITY_BROADCAST_RANGE:-80}
+PAPER_NETWORK_COMPRESSION_THRESHOLD=${PAPER_NETWORK_COMPRESSION_THRESHOLD:-256}
+PAPER_USE_NATIVE_TRANSPORT=${PAPER_USE_NATIVE_TRANSPORT:-true}
+PAPER_CHUNK_IO_THREADS=${PAPER_CHUNK_IO_THREADS:-3}
+PAPER_CHUNK_WORKER_THREADS=${PAPER_CHUNK_WORKER_THREADS:-4}
+PAPER_CHUNK_LOAD_RATE=${PAPER_CHUNK_LOAD_RATE:-2400.0}
+PAPER_CHUNK_SEND_RATE=${PAPER_CHUNK_SEND_RATE:-1800.0}
+PAPER_CHUNK_GENERATE_RATE=${PAPER_CHUNK_GENERATE_RATE:-360.0}
+PAPER_PLAYER_MAX_CONCURRENT_CHUNK_LOADS=${PAPER_PLAYER_MAX_CONCURRENT_CHUNK_LOADS:-96}
+PAPER_PLAYER_MAX_CONCURRENT_CHUNK_GENERATES=${PAPER_PLAYER_MAX_CONCURRENT_CHUNK_GENERATES:-24}
+PAPER_DELAY_CHUNK_UNLOADS_BY=${PAPER_DELAY_CHUNK_UNLOADS_BY:-180s}
 PAPER_SESSION=${PAPER_SESSION:-chzzk-paper}
 BRIDGE_SESSION=${BRIDGE_SESSION:-chzzk-bridge}
 AWS_PROCESS_MANAGER=${AWS_PROCESS_MANAGER:-}
 GRADLE_CMD=${GRADLE_CMD:-$REPO_ROOT/gradlew}
 NPM_CMD=${NPM_CMD:-npm}
+NODE_CMD=${NODE_CMD:-node}
+BRIDGE_NODE_ENV=${BRIDGE_NODE_ENV:-production}
+BRIDGE_NODE_OPTIONS=${BRIDGE_NODE_OPTIONS:---max-old-space-size=256}
+BRIDGE_UV_THREADPOOL_SIZE=${BRIDGE_UV_THREADPOOL_SIZE:-2}
 CURL_CMD=${CURL_CMD:-curl}
 HEALTH_URL=${HEALTH_URL:-http://127.0.0.1:29371/chzzk/donations/health}
 
@@ -139,6 +153,72 @@ write_server_properties() {
   set_server_property simulation-distance "$PAPER_SIMULATION_DISTANCE"
   set_server_property sync-chunk-writes "$PAPER_SYNC_CHUNK_WRITES"
   set_server_property entity-broadcast-range-percentage "$PAPER_ENTITY_BROADCAST_RANGE"
+  set_server_property network-compression-threshold "$PAPER_NETWORK_COMPRESSION_THRESHOLD"
+  set_server_property use-native-transport "$PAPER_USE_NATIVE_TRANSPORT"
+}
+
+set_yaml_top_property() {
+  local file=$1
+  local section=$2
+  local key=$3
+  local value=$4
+  local tmp
+  tmp=$(mktemp)
+  touch "$file"
+  awk -v section="$section" -v key="$key" -v value="$value" '
+    BEGIN { in_section = 0; found_section = 0; wrote_key = 0 }
+    $0 == section ":" {
+      if (in_section && !wrote_key) {
+        print "  " key ": " value
+      }
+      in_section = 1
+      found_section = 1
+      wrote_key = 0
+      print
+      next
+    }
+    in_section && $0 !~ /^ / {
+      if (!wrote_key) {
+        print "  " key ": " value
+        wrote_key = 1
+      }
+      in_section = 0
+    }
+    in_section && $0 ~ "^  " key ":" {
+      print "  " key ": " value
+      wrote_key = 1
+      next
+    }
+    { print }
+    END {
+      if (!found_section) {
+        print section ":"
+        print "  " key ": " value
+      } else if (in_section && !wrote_key) {
+        print "  " key ": " value
+      }
+    }
+  ' "$file" > "$tmp"
+  mv "$tmp" "$file"
+}
+
+write_paper_global_config() {
+  local file=$PAPER_DIR/config/paper-global.yml
+  mkdir -p "$PAPER_DIR/config"
+  set_yaml_top_property "$file" chunk-system io-threads "$PAPER_CHUNK_IO_THREADS"
+  set_yaml_top_property "$file" chunk-system worker-threads "$PAPER_CHUNK_WORKER_THREADS"
+  set_yaml_top_property "$file" chunk-loading-basic player-max-chunk-load-rate "$PAPER_CHUNK_LOAD_RATE"
+  set_yaml_top_property "$file" chunk-loading-basic player-max-chunk-send-rate "$PAPER_CHUNK_SEND_RATE"
+  set_yaml_top_property "$file" chunk-loading-basic player-max-chunk-generate-rate "$PAPER_CHUNK_GENERATE_RATE"
+  set_yaml_top_property "$file" chunk-loading-advanced auto-config-send-distance false
+  set_yaml_top_property "$file" chunk-loading-advanced player-max-concurrent-chunk-loads "$PAPER_PLAYER_MAX_CONCURRENT_CHUNK_LOADS"
+  set_yaml_top_property "$file" chunk-loading-advanced player-max-concurrent-chunk-generates "$PAPER_PLAYER_MAX_CONCURRENT_CHUNK_GENERATES"
+}
+
+write_paper_world_defaults_config() {
+  local file=$PAPER_DIR/config/paper-world-defaults.yml
+  mkdir -p "$PAPER_DIR/config"
+  set_yaml_top_property "$file" chunks delay-chunk-unloads-by "$PAPER_DELAY_CHUNK_UNLOADS_BY"
 }
 
 write_starters() {
@@ -165,8 +245,11 @@ fi
 export CHZZK_TOKEN_STORE="\${CHZZK_TOKEN_STORE:-$BRIDGE_DATA_DIR/.chzzk-tokens.json}"
 export MINECRAFT_WEBHOOK_URL="\${MINECRAFT_WEBHOOK_URL:-http://127.0.0.1:29371/chzzk/donations}"
 export MINECRAFT_WEBHOOK_HEALTH_URL="\${MINECRAFT_WEBHOOK_HEALTH_URL:-http://127.0.0.1:29371/chzzk/donations/health}"
+export NODE_ENV="$BRIDGE_NODE_ENV"
+export NODE_OPTIONS="$BRIDGE_NODE_OPTIONS"
+export UV_THREADPOOL_SIZE="$BRIDGE_UV_THREADPOOL_SIZE"
 cd "$REPO_ROOT/bridge"
-exec "$NPM_CMD" run start >> "$LOG_DIR/bridge.log" 2>&1
+exec "$NODE_CMD" "$REPO_ROOT/bridge/dist/index.js" >> "$LOG_DIR/bridge.log" 2>&1
 EOF
 
   chmod 700 "$BIN_DIR/start-paper.sh" "$BIN_DIR/start-bridge.sh"
@@ -217,6 +300,8 @@ fi
 cp "$plugin_jar" "$PAPER_DIR/plugins/chzzk-donation.jar"
 printf 'eula=true\n' > "$PAPER_DIR/eula.txt"
 write_server_properties
+write_paper_global_config
+write_paper_world_defaults_config
 write_paper_config
 
 log "Installing and building bridge"
@@ -226,6 +311,7 @@ else
   "$NPM_CMD" --prefix "$REPO_ROOT/bridge" install
 fi
 "$NPM_CMD" --prefix "$REPO_ROOT/bridge" run build
+"$NPM_CMD" --prefix "$REPO_ROOT/bridge" prune --omit=dev
 
 write_starters
 

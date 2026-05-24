@@ -14,6 +14,8 @@
 
 - If docs tell users to edit packaged `plugin/src/main/resources/config.yml` for Docker secret, reverse it: use root `.env` and generated runtime config.
 - If effect docs say target comes from config, reverse it: target is set by `/chzzk target set`.
+- If TNT is visually spawned but silent, do not assume vanilla priming audio is enough; play an explicit TNT primed sound from the plugin.
+- If random teleport shows blank terrain after arrival, do not only add RAM or block teleport behind synchronous preloading; keep the destination freshly random within the +/-1000 range, prewarm random candidate chunks with Paper urgent async loading, teleport promptly, and keep server chunk send/load limits aligned with event traffic.
 - If tier docs accept ranges, reverse it: exact amount matching only.
 
 ## Failure Counteraction Rule

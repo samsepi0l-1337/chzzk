@@ -24,14 +24,19 @@ import org.bukkit.Bukkit;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.event.HandlerList;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitTask;
 
 public final class ChzzkDonationPlugin extends JavaPlugin {
+    private static final int AVAILABILITY_TIMEOUT_SECONDS = 5;
+    private static final int EFFECT_TIMEOUT_SECONDS = 20;
+
     private PluginStateStore stateStore;
     private TargetService targetService;
     private DeathCountService deathCountService;
     private SidebarService sidebarService;
     private DonationEffectExecutor effectExecutor;
     private DonationWebhookServer webhookServer;
+    private BukkitTask teleportPreloadTask;
 
     @Override
     public void onEnable() {
@@ -41,18 +46,25 @@ public final class ChzzkDonationPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        if (webhookServer != null) {
-            webhookServer.stop();
-        }
+        stopServices();
     }
 
     public void reloadChzzk() {
         reloadConfig();
+        stopServices();
+        startServices();
+    }
+
+    private void stopServices() {
         if (webhookServer != null) {
             webhookServer.stop();
+            webhookServer = null;
+        }
+        if (teleportPreloadTask != null) {
+            teleportPreloadTask.cancel();
+            teleportPreloadTask = null;
         }
         HandlerList.unregisterAll(this);
-        startServices();
     }
 
     private void startServices() {
@@ -70,6 +82,7 @@ public final class ChzzkDonationPlugin extends JavaPlugin {
 
         registerCommand(donationService);
         registerListener();
+        startTeleportPreload();
         startWebhook(donationService);
         sidebarService.update();
     }
@@ -110,6 +123,11 @@ public final class ChzzkDonationPlugin extends JavaPlugin {
         webhookServer.start();
     }
 
+    private void startTeleportPreload() {
+        teleportPreloadTask =
+                Bukkit.getScheduler().runTaskTimer(this, effectExecutor::prepareTeleportChunks, 20L, 5L);
+    }
+
     private Consumer<DonationTier> syncRunner(DonationEffectExecutor executor) {
         return tier -> {
             if (Bukkit.isPrimaryThread()) {
@@ -127,7 +145,7 @@ public final class ChzzkDonationPlugin extends JavaPlugin {
             awaitScheduledBukkitCall(
                     scheduledEffect,
                     effectEnabled,
-                    5,
+                    EFFECT_TIMEOUT_SECONDS,
                     TimeUnit.SECONDS,
                     "running donation effect");
         };
@@ -144,7 +162,7 @@ public final class ChzzkDonationPlugin extends JavaPlugin {
         return awaitScheduledBukkitCall(
                 scheduledAvailability,
                 availabilityEnabled,
-                5,
+                AVAILABILITY_TIMEOUT_SECONDS,
                 TimeUnit.SECONDS,
                 "checking target availability");
     }

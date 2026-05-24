@@ -48,15 +48,15 @@ webhook `amount`는 JSON number이며 Java `int` 범위 안의 정수여야 한�
 `DonationEffectExecutor`는 `Consumer<DonationTier>`다.
 
 - target은 `TargetService.onlineTarget()`에서 가져온다.
-- `RANDOM_TELEPORT`는 현재 target 위치 기준 X와 Z를 각각 `-1000..1000` 범위에서 무작위로 고르고, 해당 column의 최고 블록 바로 위로 텔레포트한다. 발·머리 칸은 비어 있어야 하고 발 아래는 solid여야 하며, 물속·용암 속·땅속·공중 부유 위치는 거부한다.
+- `RANDOM_TELEPORT`는 후원 수신 시점의 target 위치 기준 X와 Z를 각각 `-1000..1000` 범위에서 새로 무작위 선택한다. 플러그인은 target이 online이면 5틱마다 랜덤 후보 주변 9x9 청크를 Paper urgent async chunk load로 미리 요청해 랜덤 목적지가 이미 로드되어 있을 확률을 높인다. 효과 실행 시에는 새 랜덤 좌표 중 이미 로드되어 있고 안전한 지상 위치만 즉시 사용하며, 찾지 못하면 현재 위치에 즉시 fallback한다. 발·머리 칸은 비어 있어야 하고 발 아래는 solid여야 하며, 물속·용암 속·땅속·공중 부유 위치는 거부한다. target은 목적지 계산 직후 즉시 텔레포트하고, 목적지 주변 9x9 청크를 다시 urgent async load로 요청한다. 텔레포트 시 enderman teleport 사운드를 재생한다.
 - 랜덤 선택은 `RandomPools` 값에서 `Random`으로 선택한다.
 - `COMBAT_MOB`와 `THREE_COMBAT_MOBS`는 각 소환마다 1% 확률로 `WITHER`를 뽑고, 실패하면 `RandomPools.combatMobs()`에서 무작위로 선택한다.
-- `TNT`는 target 기준 반경 3블록 안에 TNT 5~7개를 즉시 소환하고 fuse를 `40 ticks`로 설정해 2초 뒤 폭발시킨다. 최초 TNT 폭발을 기다리는 후속 소환 체인은 없다.
+- `TNT`는 target 기준 반경 3블록 안에 TNT 5~7개를 즉시 소환하고 fuse를 `40 ticks`로 설정해 2초 뒤 폭발시킨다. 소환 시 target 위치에 primed TNT 사운드를 재생한다. 최초 TNT 폭발을 기다리는 후속 소환 체인은 없다.
 - `KILL_TARGET`은 player UUID를 `pluginKills`에 기록하고 `setHealth(0.0)`을 호출한다.
 
 Paper API를 호출하므로 반드시 서버 메인 스레드에서 실행되어야 한다. webhook에서 직접 호출하지 말고 `ChzzkDonationPlugin.syncRunner` 경로를 유지한다.
 
-target availability도 `Bukkit.getPlayer` 계열 API를 사용하므로 webhook thread에서 직접 조회하지 않는다. `ChzzkDonationPlugin`은 availability 조회와 효과 실행을 모두 Bukkit scheduler에 올리고 최대 5초만 기다린다. timeout 또는 interrupt가 발생하면 예약된 작업을 취소하고 실행 게이트를 닫아, 큐에 남은 작업이 뒤늦게 Bukkit API를 호출하거나 같은 후원 효과가 중복 적용되지 않게 한다.
+target availability도 `Bukkit.getPlayer` 계열 API를 사용하므로 webhook thread에서 직접 조회하지 않는다. `ChzzkDonationPlugin`은 availability 조회와 효과 실행을 모두 Bukkit scheduler에 올린다. availability 조회는 최대 5초, 효과 실행은 랜덤 TP 청크 선로딩을 고려해 최대 20초만 기다린다. timeout 또는 interrupt가 발생하면 예약된 작업을 취소하고 실행 게이트를 닫아, 큐에 남은 작업이 뒤늦게 Bukkit API를 호출하거나 같은 후원 효과가 중복 적용되지 않게 한다.
 
 ## 사망 이벤트와 인벤토리
 
