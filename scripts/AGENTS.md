@@ -23,6 +23,7 @@
 - If stopped-stack backup fails after services are stopped, do not leave the stack down; restart through the EXIT trap before reporting the backup failure.
 - If Windows Docker Desktop update fails over SSH with `error getting credentials` / `logon session does not exist`, do not reset Docker credentials or repeat `--pull`; use an interactive Windows session or a local-base artifact overlay from verified build outputs.
 - If AWS provision plan output is correct but no EC2 appears, do not retry arbitrary AWS CLI commands; rerun with `AWS_EC2_APPLY=true` or `npm run aws:ec2:provision` after confirming the config.
+- If Amazon Linux 2023 user-data fails with `curl-minimal` conflicts, do not install the `curl` package; rely on the existing `curl-minimal` command or install `curl-minimal` explicitly.
 
 ## Failure Counteraction Rule
 

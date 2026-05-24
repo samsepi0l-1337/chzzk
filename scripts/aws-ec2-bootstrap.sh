@@ -21,7 +21,7 @@ command -v dnf >/dev/null 2>&1 || fail "dnf is required; use Amazon Linux 2023 f
 
 log "Installing native host packages"
 run_sudo dnf update -y
-run_sudo dnf install -y git curl tar java-21-amazon-corretto-headless nodejs npm tmux screen
+run_sudo dnf install -y git curl-minimal tar java-21-amazon-corretto-headless nodejs npm tmux screen
 
 java -version >/dev/null
 node --version >/dev/null

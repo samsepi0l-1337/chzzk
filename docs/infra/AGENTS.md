@@ -19,6 +19,7 @@
 - If AWS helper scripts are run with a non-default env file, do not document only `.env`; show the same `ENV_FILE` on deploy, verify, and backup commands.
 - If AWS provisioning appears to do nothing, do not bypass the safety gate; review `config/aws-ec2.env` and then set `AWS_EC2_APPLY=true` only when EC2 creation is intended.
 - If AWS deploy needs process supervision, do not add Docker; use `tmux` or `screen` sessions and verify them directly.
+- If Amazon Linux 2023 user-data fails with `curl-minimal` package conflicts, do not retry the same `curl` install; use `curl-minimal` and rerun bootstrap.
 
 ## Failure Counteraction Rule
 
