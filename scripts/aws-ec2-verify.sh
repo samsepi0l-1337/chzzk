@@ -1,64 +1,79 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-REPO_ROOT=$(cd "$SCRIPT_DIR/.." && pwd)
-COMPOSE_FILE=${COMPOSE_FILE:-docker-compose.yml}
-ENV_FILE=${ENV_FILE:-.env}
+PAPER_SESSION=${PAPER_SESSION:-chzzk-paper}
+BRIDGE_SESSION=${BRIDGE_SESSION:-chzzk-bridge}
+AWS_PROCESS_MANAGER=${AWS_PROCESS_MANAGER:-}
+CURL_CMD=${CURL_CMD:-curl}
 HEALTH_URL=${HEALTH_URL:-http://127.0.0.1:29371/chzzk/donations/health}
 
 log() { printf '[aws-ec2-verify] %s\n' "$1"; }
 fail() { printf '[aws-ec2-verify] ERROR: %s\n' "$1" >&2; exit 1; }
 
-host_port_listens() {
+select_manager() {
+  if [ -n "$AWS_PROCESS_MANAGER" ]; then
+    command -v "$AWS_PROCESS_MANAGER" >/dev/null 2>&1 || fail "$AWS_PROCESS_MANAGER is not installed"
+    printf '%s' "$AWS_PROCESS_MANAGER"
+    return
+  fi
+  if command -v tmux >/dev/null 2>&1; then
+    printf 'tmux'
+    return
+  fi
+  if command -v screen >/dev/null 2>&1; then
+    printf 'screen'
+    return
+  fi
+  fail "tmux or screen is required"
+}
+
+session_running() {
+  local manager=$1
+  local session=$2
+  case "$manager" in
+    tmux) tmux has-session -t "$session" >/dev/null 2>&1 ;;
+    screen) screen -ls | grep -Eq "[.]${session}[[:space:]]" ;;
+    *) return 1 ;;
+  esac
+}
+
+port_listen_addresses() {
   local port=$1
   if command -v ss >/dev/null 2>&1; then
-    ss -ltn | awk '{print $4}' | grep -Eq "(^|[.:])${port}$"
+    ss -ltn | awk '{print $4}' | grep -E "(^|[.:])${port}$" || true
     return
   fi
   if command -v lsof >/dev/null 2>&1; then
-    lsof -nP -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1
+    lsof -nP -iTCP:"$port" -sTCP:LISTEN | awk 'NR > 1 {print $9}' || true
     return
   fi
   fail "ss or lsof is required to verify host ports"
 }
 
-cd "$REPO_ROOT"
-command -v docker >/dev/null 2>&1 || fail "docker is required"
-docker compose version >/dev/null 2>&1 || fail "docker compose is required"
-[ -f "$COMPOSE_FILE" ] || fail "missing $COMPOSE_FILE"
+host_port_listens() {
+  [ -n "$(port_listen_addresses "$1")" ]
+}
 
-compose_cmd=(docker compose)
-if [ -f "$ENV_FILE" ]; then
-  compose_cmd+=(--env-file "$ENV_FILE")
-fi
-compose_cmd+=(-f "$COMPOSE_FILE")
+webhook_port_loopback_only() {
+  local addresses
+  addresses=$(port_listen_addresses 29371)
+  [ -n "$addresses" ] || fail "webhook port 29371 is not listening"
+  if ! printf '%s\n' "$addresses" | grep -Eq '127\.0\.0\.1:29371|\[::1\]:29371|::1:29371|localhost:29371'; then
+    fail "webhook port 29371 must listen on loopback"
+  fi
+  if printf '%s\n' "$addresses" | grep -Eq '0\.0\.0\.0:29371|\*:29371|\[::\]:29371|:::29371'; then
+    fail "webhook port 29371 must not listen on all interfaces"
+  fi
+}
 
-log "Checking compose port contract"
-config=$("${compose_cmd[@]}" config)
-printf '%s\n' "$config" | grep -q 'published: "25565"' || fail "compose does not publish 25565"
-if printf '%s\n' "$config" | grep -q 'published: "29371"'; then
-  fail "compose must not publish webhook port 29371"
-fi
+manager=$(select_manager)
 
-paper_id=$("${compose_cmd[@]}" ps -q paper)
-bridge_id=$("${compose_cmd[@]}" ps -q bridge)
-[ -n "$paper_id" ] || fail "paper container not found"
-[ -n "$bridge_id" ] || fail "bridge container not found"
+session_running "$manager" "$PAPER_SESSION" || fail "paper session is not running: $PAPER_SESSION"
+session_running "$manager" "$BRIDGE_SESSION" || fail "bridge session is not running: $BRIDGE_SESSION"
 
-paper_health=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}missing{{end}}' "$paper_id")
-[ "$paper_health" = "healthy" ] || fail "paper health is $paper_health"
-
-bridge_running=$(docker inspect -f '{{.State.Running}}' "$bridge_id")
-[ "$bridge_running" = "true" ] || fail "bridge is not running"
-
-log "Checking plugin webhook from inside paper container"
-"${compose_cmd[@]}" exec -T paper curl -fsS "$HEALTH_URL" >/dev/null
-
-log "Checking host port exposure"
 host_port_listens 25565 || fail "host port 25565 is not listening"
-if host_port_listens 29371; then
-  fail "host port 29371 must not be listening"
-fi
+webhook_port_loopback_only
 
-log "OK: paper healthy, bridge running, 25565 exposed, 29371 internal-only"
+"$CURL_CMD" -fsS "$HEALTH_URL" >/dev/null
+
+log "OK: paper and bridge sessions running, 25565 exposed, 29371 loopback-only"

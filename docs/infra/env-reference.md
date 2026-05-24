@@ -1,6 +1,6 @@
 # Environment Reference
 
-환경 변수는 루트 Docker 실행과 bridge 로컬 실행에 사용된다.
+환경 변수는 루트 Docker 실행, AWS native 실행, bridge 로컬 실행에 사용된다.
 
 ## 루트 `.env.example`
 
@@ -30,6 +30,7 @@ Docker compose 기준 파일:
 `npm run auth`로 token을 bootstrap/exchange하는 경로는 webhook을 호출하지 않으므로
 `MINECRAFT_WEBHOOK_SECRET`을 요구하지 않는다. bridge live session 실행은 여전히 이 값을 요구한다.
 Docker 첫 live session에서 `/data/.chzzk-tokens.json`이 없고 `CHZZK_REFRESH_TOKEN`이 있으면 bridge가 token store를 생성하고 이후 실행에서 재사용한다.
+AWS native 배포에서는 기본 token store가 `$HOME/chzzk-runtime/bridge/.chzzk-tokens.json`이며 `scripts/aws-ec2-deploy.sh`가 bridge starter에 `CHZZK_TOKEN_STORE`를 설정한다.
 
 ## bridge `.env.example`
 
@@ -58,6 +59,7 @@ plugin config:
 
 - `webhook.shared-secret`은 bridge의 `MINECRAFT_WEBHOOK_SECRET`과 같아야 한다.
 - Docker에서는 `paper-entrypoint.sh`가 `MINECRAFT_WEBHOOK_SECRET`로 plugin config를 생성한다. 이 값은 YAML block scalar로 기록되어 큰따옴표와 개행이 포함된 secret도 config 구조를 깨지 않는다.
+- AWS native 배포에서는 `scripts/aws-ec2-deploy.sh`가 `MINECRAFT_WEBHOOK_SECRET`로 plugin config를 생성하고 `webhook.host`를 `127.0.0.1`로 제한한다.
 - 로컬 Paper 직접 실행에서는 `plugin/src/main/resources/config.yml`이 기본값이므로 서버의 실제 `plugins/ChzzkDonation/config.yml`을 직접 수정해야 한다.
 
 ## 숫자 변수 검증

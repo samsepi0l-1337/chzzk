@@ -3,76 +3,79 @@ set -euo pipefail
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 REPO_ROOT=$(cd "$SCRIPT_DIR/.." && pwd)
-COMPOSE_FILE=${COMPOSE_FILE:-docker-compose.yml}
-ENV_FILE=${ENV_FILE:-.env}
+AWS_RUNTIME_DIR=${AWS_RUNTIME_DIR:-${HOME:-$REPO_ROOT}/chzzk-runtime}
+PAPER_DIR=${PAPER_DIR:-$AWS_RUNTIME_DIR/paper}
+BRIDGE_DATA_DIR=${BRIDGE_DATA_DIR:-$AWS_RUNTIME_DIR/bridge}
 BACKUP_DIR=${BACKUP_DIR:-$REPO_ROOT/backups}
 BACKUP_STOP_STACK=${BACKUP_STOP_STACK:-false}
-COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME:-$(basename "$REPO_ROOT" | tr '[:upper:]' '[:lower:]')}
+AWS_RESTART_CMD=${AWS_RESTART_CMD:-bash "$REPO_ROOT/scripts/aws-ec2-deploy.sh"}
+PAPER_SESSION=${PAPER_SESSION:-chzzk-paper}
+BRIDGE_SESSION=${BRIDGE_SESSION:-chzzk-bridge}
+AWS_PROCESS_MANAGER=${AWS_PROCESS_MANAGER:-}
 
 log() { printf '[aws-ec2-backup] %s\n' "$1"; }
 fail() { printf '[aws-ec2-backup] ERROR: %s\n' "$1" >&2; exit 1; }
 
-container_volume_for_mount() {
-  local service=$1
-  local mount=$2
-  local fallback=$3
-  local container_id
-  container_id=$("${compose_cmd[@]}" ps --all -q "$service" 2>/dev/null || true)
-  container_id=${container_id%%$'\n'*}
-  if [ -n "$container_id" ]; then
-    docker inspect -f "{{range .Mounts}}{{if eq .Destination \"$mount\"}}{{.Name}}{{end}}{{end}}" "$container_id"
+select_manager() {
+  if [ -n "$AWS_PROCESS_MANAGER" ]; then
+    command -v "$AWS_PROCESS_MANAGER" >/dev/null 2>&1 || fail "$AWS_PROCESS_MANAGER is not installed"
+    printf '%s' "$AWS_PROCESS_MANAGER"
     return
   fi
-  printf '%s' "$fallback"
+  if command -v tmux >/dev/null 2>&1; then
+    printf 'tmux'
+    return
+  fi
+  if command -v screen >/dev/null 2>&1; then
+    printf 'screen'
+    return
+  fi
+  fail "tmux or screen is required when BACKUP_STOP_STACK=true"
 }
 
-backup_volume() {
-  local volume=$1
-  local name=$2
-  local timestamp=$3
-  docker volume inspect "$volume" >/dev/null 2>&1 || fail "missing Docker volume: $volume"
-  docker run --rm \
-    -v "$volume:/data:ro" \
-    -v "$BACKUP_DIR:/backup" \
-    alpine tar czf "/backup/${name}-${timestamp}.tgz" -C /data .
-  log "Wrote $BACKUP_DIR/${name}-${timestamp}.tgz"
+stop_session() {
+  local manager=$1
+  local session=$2
+  case "$manager" in
+    tmux) tmux kill-session -t "$session" >/dev/null 2>&1 || true ;;
+    screen) screen -S "$session" -X quit >/dev/null 2>&1 || true ;;
+  esac
 }
 
 restart_stack() {
   if [ "$stack_stopped" = "true" ]; then
-    log "Restarting stack"
-    "${compose_cmd[@]}" up -d
+    log "Restarting native stack"
+    eval "$AWS_RESTART_CMD"
   fi
 }
 
-cd "$REPO_ROOT"
-command -v docker >/dev/null 2>&1 || fail "docker is required"
-docker compose version >/dev/null 2>&1 || fail "docker compose is required"
+backup_dir() {
+  local source_dir=$1
+  local name=$2
+  local timestamp=$3
+  [ -d "$source_dir" ] || fail "missing directory: $source_dir"
+  tar czf "$BACKUP_DIR/${name}-${timestamp}.tgz" -C "$source_dir" .
+  log "Wrote $BACKUP_DIR/${name}-${timestamp}.tgz"
+}
+
 mkdir -p "$BACKUP_DIR"
 BACKUP_DIR=$(cd "$BACKUP_DIR" && pwd)
-
-compose_cmd=(docker compose)
-if [ -f "$ENV_FILE" ]; then
-  compose_cmd+=(--env-file "$ENV_FILE")
-fi
-compose_cmd+=(-f "$COMPOSE_FILE")
 stack_stopped=false
 
 if [ "$BACKUP_STOP_STACK" = "true" ]; then
+  manager=$(select_manager)
   stack_stopped=true
   trap restart_stack EXIT
-  log "Stopping stack for consistent backup"
-  "${compose_cmd[@]}" stop
+  log "Stopping native sessions for consistent backup"
+  stop_session "$manager" "$BRIDGE_SESSION"
+  stop_session "$manager" "$PAPER_SESSION"
 else
-  log "Backing up live volumes; set BACKUP_STOP_STACK=true for a stopped consistent backup"
+  log "Backing up live runtime directories; set BACKUP_STOP_STACK=true for a stopped consistent backup"
 fi
 
 timestamp=$(date -u +%Y%m%dT%H%M%SZ)
-paper_volume=$(container_volume_for_mount paper /server "${COMPOSE_PROJECT_NAME}_paper-data")
-bridge_volume=$(container_volume_for_mount bridge /data "${COMPOSE_PROJECT_NAME}_bridge-data")
-
-backup_volume "$paper_volume" paper-data "$timestamp"
-backup_volume "$bridge_volume" bridge-data "$timestamp"
+backup_dir "$PAPER_DIR" paper "$timestamp"
+backup_dir "$BRIDGE_DATA_DIR" bridge-data "$timestamp"
 
 if [ "$BACKUP_STOP_STACK" = "true" ]; then
   restart_stack

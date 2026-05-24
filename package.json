@@ -12,6 +12,11 @@
     "auth:login": "npm --prefix bridge run auth:login -- --env-file .env",
     "e2e:health": "npm --prefix bridge run e2e:health",
     "e2e:webhook": "npm --prefix bridge run e2e:webhook --",
-    "e2e:check-env": "npm --prefix bridge run e2e:check-env"
+    "e2e:check-env": "npm --prefix bridge run e2e:check-env",
+    "aws:ec2:plan": "bash scripts/aws-ec2-provision.sh",
+    "aws:ec2:provision": "AWS_EC2_APPLY=true bash scripts/aws-ec2-provision.sh",
+    "aws:ec2:deploy": "bash scripts/aws-ec2-deploy.sh",
+    "aws:ec2:verify": "bash scripts/aws-ec2-verify.sh",
+    "aws:ec2:backup": "bash scripts/aws-ec2-backup.sh"
   }
 }

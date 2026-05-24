@@ -1,5 +1,6 @@
 # Environment and secrets
 .env
+config/aws-ec2.env
 .chzzk-tokens.json*
 
 # Node

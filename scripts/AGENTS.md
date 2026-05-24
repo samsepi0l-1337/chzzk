@@ -8,19 +8,21 @@
 ## Must Know
 
 - Scripts must be safe to re-run, fail fast, and avoid printing secret values.
-- Windows scripts target `C:\chzzk`; AWS scripts target in-repo Docker Compose on Amazon Linux 2023.
+- Windows scripts target `C:\chzzk`; AWS scripts target native Paper + Node bridge processes on Amazon Linux 2023.
 - `MINECRAFT_WEBHOOK_SECRET`, CHZZK client secret, refresh token, and token store contents must never be echoed.
-- AWS scripts must not create paid resources unless the user explicitly requests it; current scripts prepare and operate an existing EC2 host.
+- AWS scripts must not create paid resources unless the user explicitly requests it; `aws-ec2-provision.sh` keeps `AWS_EC2_APPLY=false` as its default safety gate.
 
 ## Failure Knowledge
 
 - If SSH-launched Windows processes exit with the session, do not retry `Start-Process`; use scheduled tasks.
 - If Windows copy paths fail, do not assume auth failed; create destination directories and use Windows-aware paths.
 - If AWS verify fails on `29371`, do not open it publicly; make it disappear from host listen and verify internal health.
+- If AWS deploy is requested, do not route it through Docker; run Paper and bridge under `tmux` or `screen`.
 - If backups include `bridge-data`, do not treat them as harmless artifacts; protect them as token-bearing secrets.
-- If AWS deploy/verify/backup uses a non-default env file, do not rerun compose without that file; pass the same `ENV_FILE` through every compose command.
+- If AWS deploy/verify/backup uses a non-default env file, do not fall back to `.env`; pass the same `ENV_FILE` through every native AWS helper command.
 - If stopped-stack backup fails after services are stopped, do not leave the stack down; restart through the EXIT trap before reporting the backup failure.
 - If Windows Docker Desktop update fails over SSH with `error getting credentials` / `logon session does not exist`, do not reset Docker credentials or repeat `--pull`; use an interactive Windows session or a local-base artifact overlay from verified build outputs.
+- If AWS provision plan output is correct but no EC2 appears, do not retry arbitrary AWS CLI commands; rerun with `AWS_EC2_APPLY=true` or `npm run aws:ec2:provision` after confirming the config.
 
 ## Failure Counteraction Rule
 

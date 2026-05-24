@@ -11,50 +11,6 @@ run_sudo() {
   fi
 }
 
-verify_docker_daemon() {
-  if docker version >/dev/null 2>&1; then
-    return
-  fi
-  if run_sudo docker version >/dev/null 2>&1; then
-    log "Docker daemon is running, but this shell is not in the docker group yet"
-    log "Reconnect SSH or run: newgrp docker"
-    return
-  fi
-  fail "Docker daemon is not reachable"
-}
-
-install_compose_plugin() {
-  if docker compose version >/dev/null 2>&1; then
-    log "Docker Compose already installed: $(docker compose version)"
-    return
-  fi
-
-  local version="${COMPOSE_VERSION:-}"
-  if [ -z "$version" ]; then
-    version=$(curl -fsSL https://api.github.com/repos/docker/compose/releases/latest \
-      | sed -n 's/.*"tag_name": "\(v[^"]*\)".*/\1/p' \
-      | head -n 1)
-  fi
-  [ -n "$version" ] || fail "Set COMPOSE_VERSION, for example COMPOSE_VERSION=v2.32.4"
-
-  local arch
-  arch=$(uname -m)
-  case "$arch" in
-    x86_64) arch=x86_64 ;;
-    aarch64|arm64) arch=aarch64 ;;
-    *) fail "unsupported architecture: $arch" ;;
-  esac
-
-  local target=/usr/local/lib/docker/cli-plugins/docker-compose
-  log "Installing Docker Compose $version for linux-$arch"
-  run_sudo mkdir -p /usr/local/lib/docker/cli-plugins
-  run_sudo curl -fsSL \
-    "https://github.com/docker/compose/releases/download/${version}/docker-compose-linux-${arch}" \
-    -o "$target"
-  run_sudo chmod +x "$target"
-  docker compose version >/dev/null
-}
-
 if [ -f /etc/os-release ]; then
   # shellcheck disable=SC1091
   . /etc/os-release
@@ -63,18 +19,19 @@ fi
 
 command -v dnf >/dev/null 2>&1 || fail "dnf is required; use Amazon Linux 2023 for this runbook"
 
-log "Installing host packages"
+log "Installing native host packages"
 run_sudo dnf update -y
-run_sudo dnf install -y git docker curl tar
+run_sudo dnf install -y git curl tar java-21-amazon-corretto-headless nodejs npm tmux screen
 
-log "Enabling Docker"
-run_sudo systemctl enable --now docker
+java -version >/dev/null
+node --version >/dev/null
+npm --version >/dev/null
 
-if [ "${EUID:-$(id -u)}" -ne 0 ] && ! id -nG "$(id -un)" | tr ' ' '\n' | grep -qx docker; then
-  run_sudo usermod -aG docker "$(id -un)"
-  log "Added $(id -un) to docker group; reconnect SSH or run: newgrp docker"
+if command -v tmux >/dev/null 2>&1; then
+  log "tmux available: $(tmux -V)"
+fi
+if command -v screen >/dev/null 2>&1; then
+  log "screen available"
 fi
 
-verify_docker_daemon
-install_compose_plugin
-log "OK: $(docker --version); $(docker compose version)"
+log "OK: Java 21, Node/npm, tmux/screen native runtime ready"

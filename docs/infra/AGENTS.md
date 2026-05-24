@@ -6,17 +6,19 @@
 
 ## Must Know
 
-- Docker Compose is the canonical AWS path.
-- `29371` is internal-only; public access is SSH management plus Minecraft `25565`.
+- AWS uses native Paper + Node bridge processes under `tmux` or `screen`; Docker Compose is not the AWS path.
+- `29371` is loopback-only on AWS; public access is SSH management plus Minecraft `25565`.
 - Windows non-Docker path needs explicit process env and runtime plugin config.
-- AWS helper scripts operate an existing EC2 host; they do not create paid AWS resources.
+- AWS helper scripts mostly operate an existing EC2 host; `scripts/aws-ec2-provision.sh` is the only paid-resource creation entrypoint and defaults to plan-only unless `AWS_EC2_APPLY=true`.
 
 ## Failure Knowledge
 
 - If operators cannot reach Minecraft, do not open webhook first; verify `25565`, security group, and Paper health.
-- If webhook fails on AWS, do not add a security group rule for `29371`; verify container-internal health.
+- If webhook fails on AWS, do not add a security group rule for `29371`; verify local loopback health and the Paper session.
 - If non-Docker env fails on Windows, do not rely on root `.env` autoload; set process env or use provided scripts.
 - If AWS helper scripts are run with a non-default env file, do not document only `.env`; show the same `ENV_FILE` on deploy, verify, and backup commands.
+- If AWS provisioning appears to do nothing, do not bypass the safety gate; review `config/aws-ec2.env` and then set `AWS_EC2_APPLY=true` only when EC2 creation is intended.
+- If AWS deploy needs process supervision, do not add Docker; use `tmux` or `screen` sessions and verify them directly.
 
 ## Failure Counteraction Rule
 

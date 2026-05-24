@@ -1,19 +1,13 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import {
-  chmodSync,
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  writeFileSync
-} from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { describe, expect, test } from "vitest";
 
 const repoRoot = resolve(__dirname, "../..");
 const scriptNames = [
+  "aws-ec2-provision.sh",
+  "aws-ec2-user-data.sh",
   "aws-ec2-bootstrap.sh",
   "aws-ec2-deploy.sh",
   "aws-ec2-verify.sh",
@@ -21,6 +15,8 @@ const scriptNames = [
 ];
 const scriptPaths = scriptNames.map((name) => join(repoRoot, "scripts", name));
 const awsDocsFile = join(repoRoot, "docs/infra/aws-ec2-deployment.md");
+const awsConfigExampleFile = join(repoRoot, "config/aws-ec2.env.example");
+const rootPackageFile = join(repoRoot, "package.json");
 
 function readScript(name: string) {
   return readFileSync(join(repoRoot, "scripts", name), "utf8");
@@ -31,12 +27,7 @@ function writeExecutable(path: string, body: string) {
   chmodSync(path, 0o755);
 }
 
-function runScriptWithFakes(
-  scriptName: string,
-  fakeDocker: string,
-  env: NodeJS.ProcessEnv = {},
-  fakeTools: Record<string, string> = {}
-) {
+function runScriptWithFakes(scriptName: string, fakeDocker: string, env: NodeJS.ProcessEnv = {}, fakeTools: Record<string, string> = {}) {
   const tempDir = mkdtempSync(join(tmpdir(), "chzzk-aws-script-"));
   const binDir = join(tempDir, "bin");
   const dockerLog = join(tempDir, "docker.log");
@@ -68,13 +59,73 @@ if [ "$1" = "compose" ]; then exit 0; fi
 exit 1
 `;
 
-const deployEnv = {
-  EULA: "true",
-  CHZZK_CLIENT_ID: "client",
-  CHZZK_CLIENT_SECRET: "secret",
-  CHZZK_CHANNEL_ID: "channel",
-  MINECRAFT_WEBHOOK_SECRET: "webhook"
-};
+const deployEnv = { EULA: "true", CHZZK_CLIENT_ID: "client", CHZZK_CLIENT_SECRET: "secret", CHZZK_CHANNEL_ID: "channel", MINECRAFT_WEBHOOK_SECRET: "webhook" };
+const provisionBaseConfig = [
+  "AWS_REGION=ap-northeast-2",
+  "AWS_EC2_APPLY=false",
+  "EC2_INSTANCE_TYPE=t4g.large",
+  "EC2_KEY_NAME=test-key",
+  "SSH_CIDR=203.0.113.10/32",
+  "MINECRAFT_CIDR=0.0.0.0/0",
+  "ROOT_VOLUME_SIZE_GB=20",
+  "EC2_USER_DATA_FILE="
+];
+
+function writeTempAwsConfig(prefix: string, extraLines: string[] = []) {
+  const tempDir = mkdtempSync(join(tmpdir(), prefix));
+  const configFile = join(tempDir, "aws.env");
+  writeFileSync(configFile, [...provisionBaseConfig, ...extraLines].join("\n"));
+  return { tempDir, configFile };
+}
+
+const fakeApplyAws = `#!/usr/bin/env bash
+printf '%s\\n' "$*" >> "$DOCKER_LOG"
+case "$*" in
+  *"authorize-security-group-ingress"*) exit 0 ;;
+  *"run-instances"*) echo i-1234567890abcdef0; exit 0 ;;
+  *"wait instance-running"*) exit 0 ;;
+  *"describe-instances"*) echo ec2-203-0-113-10.ap-northeast-2.compute.amazonaws.com; exit 0 ;;
+esac
+exit 1
+`;
+
+const fakeCreateSecurityGroupAws = `#!/usr/bin/env bash
+printf '%s\\n' "$*" >> "$DOCKER_LOG"
+case "$*" in
+  *"describe-vpcs"*) echo vpc-default; exit 0 ;;
+  *"describe-security-groups"*) echo None; exit 0 ;;
+  *"create-security-group"*) echo sg-created; exit 0 ;;
+  *"authorize-security-group-ingress"*) exit 0 ;;
+  *"run-instances"*) echo i-1234567890abcdef0; exit 0 ;;
+  *"wait instance-running"*) exit 0 ;;
+  *"describe-instances"*) echo ec2-203-0-113-10.ap-northeast-2.compute.amazonaws.com; exit 0 ;;
+esac
+exit 1
+`;
+
+const fakeGradle = `#!/usr/bin/env bash
+printf 'gradle %s\\n' "$*" >> "$DOCKER_LOG"
+mkdir -p "$PWD/plugin/build/libs"
+printf 'jar\\n' > "$PWD/plugin/build/libs/chzzk-donation-0.1.0.jar"
+`;
+
+const fakeNpm = `#!/usr/bin/env bash
+printf 'npm %s\\n' "$*" >> "$DOCKER_LOG"
+`;
+
+const fakeDownloadCurl = `#!/usr/bin/env bash
+printf 'curl %s\\n' "$*" >> "$DOCKER_LOG"
+out=
+while [ "$#" -gt 0 ]; do
+  if [ "$1" = "-o" ]; then shift; out="$1"; fi
+  shift || true
+done
+if [ -n "$out" ]; then mkdir -p "$(dirname "$out")"; printf 'paper\\n' > "$out"; fi
+`;
+
+const fakeTmux = `#!/usr/bin/env bash
+printf 'tmux %s\\n' "$*" >> "$DOCKER_LOG"
+`;
 
 describe("AWS EC2 deployment scripts", () => {
   test("all scripts exist and pass bash syntax checks", () => {
@@ -84,40 +135,117 @@ describe("AWS EC2 deployment scripts", () => {
     }
   });
 
-  test("deploy script validates required production env before starting compose", () => {
-    const script = readScript("aws-ec2-deploy.sh");
+  test("AWS EC2 config example separates AWS resource settings from app secrets", () => {
+    const config = readFileSync(awsConfigExampleFile, "utf8");
 
-    for (const key of [
-      "EULA",
-      "CHZZK_CLIENT_ID",
-      "CHZZK_CLIENT_SECRET",
-      "CHZZK_CHANNEL_ID",
-      "MINECRAFT_WEBHOOK_SECRET"
-    ]) {
-      expect(script).toContain(key);
-    }
-    expect(script).toContain("compose_cmd+=(--env-file \"$ENV_FILE\")");
-    expect(script).toContain("\"${compose_cmd[@]}\" up -d --build");
-    expect(script).toContain("docker-compose.yml");
+    expect(config).toContain("AWS_REGION=ap-northeast-2");
+    expect(config).toContain("EC2_INSTANCE_TYPE=t4g.large");
+    expect(config).toContain("al2023-ami-kernel-default-arm64");
+    expect(config).toContain("EC2_KEY_NAME=");
+    expect(config).toContain("SSH_CIDR=203.0.113.10/32");
+    expect(config).toContain("MINECRAFT_CIDR=0.0.0.0/0");
+    expect(config).toContain("ROOT_VOLUME_SIZE_GB=20");
+    expect(config).toContain("AWS_EC2_APPLY=false");
+    expect(config).not.toContain("MINECRAFT_WEBHOOK_SECRET");
+    expect(config).not.toContain("CHZZK_CLIENT_SECRET");
+    expect(config).not.toContain("CHZZK_REFRESH_TOKEN");
   });
 
-  test("deploy script supports environment-only configuration without a .env file", () => {
+  test("provision script is plan-only by default and avoids AWS API calls", () => {
+    const { tempDir, configFile } = writeTempAwsConfig("chzzk-aws-plan-");
+    const fakeAws = `#!/usr/bin/env bash
+printf '%s\\n' "$*" >> "$DOCKER_LOG"
+exit 99
+`;
+
+    const { result, log } = runScriptWithFakes(
+      "aws-ec2-provision.sh",
+      passingComposeFake,
+      { CONFIG_FILE: configFile },
+      { aws: fakeAws }
+    );
+    rmSync(tempDir, { recursive: true, force: true });
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("Plan only");
+    expect(log).toBe("");
+  });
+
+  test("provision script creates only SSH and Minecraft ingress when explicitly applied", () => {
+    const { tempDir, configFile } = writeTempAwsConfig("chzzk-aws-apply-", [
+      "EC2_SECURITY_GROUP_ID=sg-existing"
+    ]);
+
+    const { result, log } = runScriptWithFakes(
+      "aws-ec2-provision.sh",
+      passingComposeFake,
+      { CONFIG_FILE: configFile, AWS_EC2_APPLY: "true" },
+      { aws: fakeApplyAws }
+    );
+    rmSync(tempDir, { recursive: true, force: true });
+
+    expect(result.status).toBe(0);
+    expect(log).toContain("--port 22 --cidr 203.0.113.10/32");
+    expect(log).toContain("--port 25565 --cidr 0.0.0.0/0");
+    expect(log).toContain("run-instances");
+    expect(log).toContain("--metadata-options HttpTokens=required,HttpEndpoint=enabled");
+    expect(log).not.toContain("--port 29371");
+  });
+
+  test("provision script creates a reusable security group without contaminating the id", () => {
+    const { tempDir, configFile } = writeTempAwsConfig("chzzk-aws-sg-");
+
+    const { result, log } = runScriptWithFakes(
+      "aws-ec2-provision.sh",
+      passingComposeFake,
+      { CONFIG_FILE: configFile, AWS_EC2_APPLY: "true" },
+      { aws: fakeCreateSecurityGroupAws }
+    );
+    rmSync(tempDir, { recursive: true, force: true });
+
+    expect(result.status).toBe(0);
+    expect(log).toContain("describe-vpcs");
+    expect(log).toContain("create-security-group");
+    expect(log).toContain("--security-group-ids sg-created");
+    expect(log).not.toContain("--security-group-ids [aws-ec2-provision]");
+  });
+
+  test("deploy script supports native tmux deployment without Docker or a .env file", () => {
     const missingEnvFile = join(tmpdir(), "missing-chzzk-deploy.env");
-    const { result, log } = runScriptWithFakes("aws-ec2-deploy.sh", passingComposeFake, {
-      ...deployEnv,
-      ENV_FILE: missingEnvFile
-    });
+    const runtimeDir = mkdtempSync(join(tmpdir(), "chzzk-aws-runtime-"));
+    const { result, log } = runScriptWithFakes(
+      "aws-ec2-deploy.sh",
+      passingComposeFake,
+      {
+        ...deployEnv,
+        AWS_RUNTIME_DIR: runtimeDir,
+        ENV_FILE: missingEnvFile,
+        GRADLE_CMD: "gradle",
+        NPM_CMD: "npm",
+        CURL_CMD: "curl",
+        AWS_PROCESS_MANAGER: "tmux"
+      },
+      { gradle: fakeGradle, npm: fakeNpm, curl: fakeDownloadCurl, tmux: fakeTmux }
+    );
 
     expect(result.status).toBe(0);
     expect(result.stderr).not.toContain("missing");
-    expect(log).not.toContain("--env-file");
-    expect(log).toContain("compose -f docker-compose.yml config");
-    expect(log).toContain("compose -f docker-compose.yml ps");
+    expect(log).toContain("gradle --no-daemon :plugin:shadowJar");
+    expect(log).toContain("npm --prefix");
+    expect(log).toContain("curl -fsSL");
+    expect(log).toContain("tmux new-session -d -s chzzk-paper");
+    expect(log).toContain("tmux new-session -d -s chzzk-bridge");
+    expect(log).not.toContain("compose");
+    expect(readFileSync(join(runtimeDir, "paper/plugins/ChzzkDonation/config.yml"), "utf8")).toContain('host: "127.0.0.1"');
+    expect(existsSync(join(runtimeDir, "bin/start-paper.sh"))).toBe(true);
+    expect(existsSync(join(runtimeDir, "bin/start-bridge.sh"))).toBe(true);
+    rmSync(runtimeDir, { recursive: true, force: true });
   });
 
-  test("deploy script reuses the selected env file for validation, startup, and status", () => {
+  test("deploy script reuses the selected env file for native startup scripts", () => {
     const tempDir = mkdtempSync(join(tmpdir(), "chzzk-aws-env-"));
     const envFile = join(tempDir, "deploy.env");
+    const runtimeDir = join(tempDir, "runtime");
     writeFileSync(
       envFile,
       [
@@ -129,124 +257,96 @@ describe("AWS EC2 deployment scripts", () => {
       ].join("\n")
     );
 
-    const { result, log } = runScriptWithFakes("aws-ec2-deploy.sh", passingComposeFake, {
-      ENV_FILE: envFile
-    });
+    const { result, log } = runScriptWithFakes(
+      "aws-ec2-deploy.sh",
+      passingComposeFake,
+      {
+        AWS_RUNTIME_DIR: runtimeDir,
+        ENV_FILE: envFile,
+        GRADLE_CMD: "gradle",
+        NPM_CMD: "npm",
+        CURL_CMD: "curl",
+        AWS_PROCESS_MANAGER: "tmux"
+      },
+      { gradle: fakeGradle, npm: fakeNpm, curl: fakeDownloadCurl, tmux: fakeTmux }
+    );
+    const bridgeStarter = readFileSync(join(runtimeDir, "bin/start-bridge.sh"), "utf8");
     rmSync(tempDir, { recursive: true, force: true });
 
     expect(result.status).toBe(0);
-    expect(log).toContain(`compose --env-file ${envFile} -f docker-compose.yml config`);
-    expect(log).toContain(`compose --env-file ${envFile} -f docker-compose.yml up -d --build`);
-    expect(log).toContain(`compose --env-file ${envFile} -f docker-compose.yml ps`);
+    expect(bridgeStarter).toContain(`. "${envFile}"`);
+    expect(bridgeStarter).toContain("CHZZK_TOKEN_STORE");
+    expect(log).not.toContain("compose");
   });
 
-  test("verify script enforces Minecraft-only host exposure", () => {
-    const script = readScript("aws-ec2-verify.sh");
-
-    expect(script).toContain('published: "25565"');
-    expect(script).toContain('published: "29371"');
-    expect(script).toContain("host_port_listens 25565");
-    expect(script).toContain("host_port_listens 29371");
-    expect(script).toContain("paper health");
-    expect(script).toContain("bridge is not running");
-  });
-
-  test("verify script parses compose and execs through the selected env file", () => {
-    const tempDir = mkdtempSync(join(tmpdir(), "chzzk-aws-verify-"));
-    const envFile = join(tempDir, "verify.env");
-    writeFileSync(envFile, "COMPOSE_PROJECT_NAME=custom\n");
+  test("verify script checks tmux sessions and loopback webhook without Docker", () => {
     const fakeDocker = `#!/usr/bin/env bash
-printf '%s\\n' "$*" >> "$DOCKER_LOG"
-last="\${!#}"
-if [ "$1" = "compose" ] && [ "$2" = "version" ]; then exit 0; fi
-if [ "$1" = "compose" ]; then
-  case "$*" in
-    *" config") printf 'services:\\n  paper:\\n    ports:\\n      - published: \"25565\"\\n'; exit 0 ;;
-    *" ps -q paper") echo paperid; exit 0 ;;
-    *" ps -q bridge") echo bridgeid; exit 0 ;;
-    *" exec -T paper"*) exit 0 ;;
-  esac
-fi
-if [ "$1" = "inspect" ]; then
-  case "$last" in
-    paperid) echo healthy; exit 0 ;;
-    bridgeid) echo true; exit 0 ;;
-  esac
-fi
-exit 1
+printf 'docker %s\\n' "$*" >> "$DOCKER_LOG"
+exit 99
 `;
     const fakeSs = `#!/usr/bin/env bash
 printf 'State Recv-Q Send-Q Local Address:Port Peer Address:Port\\n'
 printf 'LISTEN 0 128 0.0.0.0:25565 0.0.0.0:*\\n'
+printf 'LISTEN 0 128 127.0.0.1:29371 0.0.0.0:*\\n'
+`;
+    const fakeHealthCurl = `#!/usr/bin/env bash
+printf 'curl %s\\n' "$*" >> "$DOCKER_LOG"
+printf '{"status":"ok"}\\n'
+`;
+    const fakeHasTmux = `#!/usr/bin/env bash
+printf 'tmux %s\\n' "$*" >> "$DOCKER_LOG"
+case "$*" in *"has-session"*) exit 0 ;; esac
 `;
 
     const { result, log } = runScriptWithFakes(
       "aws-ec2-verify.sh",
       fakeDocker,
-      { ENV_FILE: envFile },
-      { ss: fakeSs }
+      { AWS_PROCESS_MANAGER: "tmux" },
+      { ss: fakeSs, curl: fakeHealthCurl, tmux: fakeHasTmux }
     );
-    rmSync(tempDir, { recursive: true, force: true });
 
     expect(result.status).toBe(0);
-    expect(log).toContain(`compose --env-file ${envFile} -f docker-compose.yml config`);
-    expect(log).toContain(`compose --env-file ${envFile} -f docker-compose.yml ps -q paper`);
-    expect(log).toContain(`compose --env-file ${envFile} -f docker-compose.yml exec -T paper`);
+    expect(log).toContain("tmux has-session -t chzzk-paper");
+    expect(log).toContain("tmux has-session -t chzzk-bridge");
+    expect(log).toContain("curl -fsS http://127.0.0.1:29371/chzzk/donations/health");
+    expect(log).not.toContain("docker");
   });
 
-  test("backup script archives both persistent volumes and warns about token secrets", () => {
+  test("backup script archives native runtime directories and warns about token secrets", () => {
     const script = readScript("aws-ec2-backup.sh");
 
-    expect(script).toContain("paper-data");
-    expect(script).toContain("bridge-data");
-    expect(script).toContain("/server");
-    expect(script).toContain("/data");
+    expect(script).toContain("AWS_RUNTIME_DIR");
+    expect(script).toContain("PAPER_DIR");
+    expect(script).toContain("BRIDGE_DATA_DIR");
     expect(script).toContain("BACKUP_STOP_STACK");
     expect(script).toContain("token store secrets");
+    expect(script).not.toContain("docker volume");
   });
 
-  test("backup script resolves stopped service mounts and restarts after backup failure", () => {
+  test("backup script archives native paper and bridge data without Docker", () => {
     const tempDir = mkdtempSync(join(tmpdir(), "chzzk-aws-backup-"));
-    const envFile = join(tempDir, "backup.env");
     const backupDir = join(tempDir, "backups");
-    writeFileSync(envFile, "COMPOSE_PROJECT_NAME=custom\n");
+    const runtimeDir = join(tempDir, "runtime");
+    mkdirSync(join(runtimeDir, "paper"), { recursive: true });
+    mkdirSync(join(runtimeDir, "bridge"), { recursive: true });
+    writeFileSync(join(runtimeDir, "paper/world.txt"), "world");
+    writeFileSync(join(runtimeDir, "bridge/.chzzk-tokens.json"), "{}");
     const fakeDocker = `#!/usr/bin/env bash
-printf '%s\\n' "$*" >> "$DOCKER_LOG"
-last="\${!#}"
-if [ "$1" = "compose" ] && [ "$2" = "version" ]; then exit 0; fi
-if [ "$1" = "compose" ]; then
-  case "$*" in
-    *" stop") exit 0 ;;
-    *" ps --all -q paper") echo paper_container; exit 0 ;;
-    *" ps --all -q bridge") echo bridge_container; exit 0 ;;
-    *" up -d") exit 0 ;;
-  esac
-fi
-if [ "$1" = "inspect" ]; then
-  case "$last" in
-    paper_container) echo custom_paper; exit 0 ;;
-    bridge_container) echo custom_bridge; exit 0 ;;
-  esac
-fi
-if [ "$1" = "volume" ] && [ "$2" = "inspect" ]; then
-  if [ "$3" = "custom_bridge" ]; then exit 1; fi
-  exit 0
-fi
-if [ "$1" = "run" ]; then exit 0; fi
+printf 'docker %s\\n' "$*" >> "$DOCKER_LOG"
 exit 1
 `;
 
     const { result, log } = runScriptWithFakes("aws-ec2-backup.sh", fakeDocker, {
-      BACKUP_STOP_STACK: "true",
       BACKUP_DIR: backupDir,
-      ENV_FILE: envFile
+      AWS_RUNTIME_DIR: runtimeDir
     });
+    const backupFiles = existsSync(backupDir) ? readdirSync(backupDir) : [];
     rmSync(tempDir, { recursive: true, force: true });
 
-    expect(result.status).not.toBe(0);
-    expect(log).toContain(`compose --env-file ${envFile} -f docker-compose.yml stop`);
-    expect(log).toContain(`compose --env-file ${envFile} -f docker-compose.yml ps --all -q paper`);
-    expect(log).toContain(`compose --env-file ${envFile} -f docker-compose.yml up -d`);
+    expect(result.status).toBe(0);
+    expect(log).not.toContain("docker");
+    expect(backupFiles.some((name) => name.startsWith("paper-"))).toBe(true);
+    expect(backupFiles.some((name) => name.startsWith("bridge-data-"))).toBe(true);
   });
 
   test("AWS EC2 docs reference the deployment kit scripts", () => {
@@ -255,8 +355,24 @@ exit 1
     for (const scriptName of scriptNames) {
       expect(docs).toContain(`scripts/${scriptName}`);
     }
+    expect(docs).toContain("config/aws-ec2.env.example");
+    expect(docs).toContain("Docker 없이");
+    expect(docs).toContain("tmux");
+    expect(docs).toContain("screen");
     expect(docs).toContain("29371");
     expect(docs).toContain("25565");
+  });
+
+  test("root package exposes AWS EC2 helper commands without executing deployment by default", () => {
+    const rootPackage = JSON.parse(readFileSync(rootPackageFile, "utf8"));
+
+    expect(rootPackage.scripts["aws:ec2:plan"]).toBe("bash scripts/aws-ec2-provision.sh");
+    expect(rootPackage.scripts["aws:ec2:provision"]).toBe(
+      "AWS_EC2_APPLY=true bash scripts/aws-ec2-provision.sh"
+    );
+    expect(rootPackage.scripts["aws:ec2:deploy"]).toBe("bash scripts/aws-ec2-deploy.sh");
+    expect(rootPackage.scripts["aws:ec2:verify"]).toBe("bash scripts/aws-ec2-verify.sh");
+    expect(rootPackage.scripts["aws:ec2:backup"]).toBe("bash scripts/aws-ec2-backup.sh");
   });
 
   test("scripts avoid secret value dumping patterns", () => {
