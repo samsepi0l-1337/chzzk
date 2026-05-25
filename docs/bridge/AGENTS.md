@@ -14,6 +14,7 @@
 - If live-session docs imply historical donation fetch, reverse it: state realtime `DONATION` only.
 - If protocol docs imply stable upstream event ids, reverse it: state bridge-generated `eventId` and dedupe limits.
 - If auth docs require webhook secret for auth-only commands, reverse it: separate auth bootstrap from live bridge runtime.
+- If webhook docs imply `Content-Type` is plugin-enforced, reverse it: state plugin verifies signature/body shape, while bridge still sends JSON content type.
 
 ## Failure Counteraction Rule
 

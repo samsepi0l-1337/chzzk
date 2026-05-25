@@ -92,6 +92,10 @@ bridge:
 
 - `bridge/test/auth-login-cli.test.ts`
 - `bridge/test/auth-url-cli.test.ts`
+- `bridge/test/auth-web-cli.test.ts`
+- `bridge/test/auth-web-server.test.ts`
+- `bridge/test/aws-ec2-scripts.test.ts`
+- `bridge/test/chat-command.test.ts`
 - `bridge/test/chzzk-oauth.test.ts`
 - `bridge/test/chzzk-auth.test.ts`
 - `bridge/test/chzzk-session.test.ts`
@@ -124,12 +128,8 @@ bridge:
 
 ## E2E 단계별 검증
 
-<<<<<<< HEAD
 라이브 CHZZK 검증은 credential과 Minecraft runtime이 필요하다. 기본 자동 검증에는 포함하지 않는다.
-=======
-라이브 검증은 credential과 Minecraft runtime이 필요하다. 기본 자동 검증에는 포함하지 않는다.
 Windows에서 서버를 여는 검증 절차와 합격 기준은 [infra/windows-server-verification.md](../infra/windows-server-verification.md)를 따른다.
->>>>>>> 6e93f84 (Add Windows server verification documentation)
 
 ### Phase 0: webhook health
 

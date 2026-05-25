@@ -14,6 +14,8 @@
 
 - If a test gap appears, do not weaken coverage gates; add a targeted regression test.
 - If live checks cannot run, do not claim coverage; state manual-only or not-run reason.
+- If a runbook section looks merged from two branches, scan for conflict markers before trusting the commands.
+- If test file lists are maintained by hand, refresh them from `bridge/test` and `plugin/src/test` before editing.
 
 ## Failure Counteraction Rule
 

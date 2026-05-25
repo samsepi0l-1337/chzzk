@@ -27,12 +27,14 @@ plugin reload/disable 시 webhook HTTP server와 background executor를 함께 �
 
 ## Request Headers
 
-필수 header:
+bridge가 보내는 header:
 
 ```text
 Content-Type: application/json
 X-Chzzk-Signature: sha256=<hmac-hex>
 ```
+
+plugin이 현재 검증하는 request header는 `X-Chzzk-Signature`와 body size 확인용 `Content-Length`다. `Content-Type`은 bridge가 JSON body임을 명시하기 위해 보내지만 plugin의 거부 조건은 아니다.
 
 서명 방식:
 
@@ -62,7 +64,7 @@ X-Chzzk-Signature: sha256=<hmac-hex>
 - `amount`: JSON number, Java `int` 범위의 양의 정수
 - `receivedAt`: non-blank ISO instant string
 
-bridge는 CHZZK `payAmount` 문자열 또는 숫자를 정수로 정규화할 때 `2,147,483,647` 이하인 양수만 webhook으로 보낸다. plugin은 같은 양수 int 범위를 다시 검증하며, tier 금액과 정확히 일치하지 않는 int 값은 `UNKNOWN_AMOUNT`로 처리한다.
+공식 CHZZK `DONATION.payAmount` 타입은 `String`이다. bridge는 이 문자열을 정수로 정규화할 때 `2,147,483,647` 이하인 양수만 webhook으로 보낸다. live payload 진단에서 숫자 타입이 보일 때를 대비해 숫자도 같은 범위에서 방어적으로 허용한다. plugin은 같은 양수 int 범위를 다시 검증하며, tier 금액과 정확히 일치하지 않는 int 값은 `UNKNOWN_AMOUNT`로 처리한다.
 
 `donatorNickname`, `message`는 없거나 null이면 빈 문자열로 처리한다.
 

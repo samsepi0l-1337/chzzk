@@ -185,7 +185,7 @@ CHZZK Session 구독 API는 channel ID를 query/body로 받지 않는다. 대상
 
 CHZZK Socket.IO payload는 객체가 아니라 JSON 문자열로 들어올 수 있다. bridge는 event handler 진입 시 문자열 payload를 JSON으로 파싱한 뒤 `SYSTEM`, `DONATION`, `CHAT`, typed `message` 처리로 넘긴다. 파싱되지 않는 문자열은 기존 필터에 따라 무시된다.
 
-공식 `DONATION` 메시지 필드는 `donationType`, `channelId`, `donatorChannelId`, `donatorNickname`, `payAmount`, `donationText`, `emojis`로 문서화되어 있으며 안정적인 event id 필드는 없다. bridge는 `payAmount`가 숫자 또는 문자열로 들어오는 경우를 모두 양수 정수로 정규화한다. webhook `eventId`는 bridge가 생성한 내부 중복 키다.
+공식 `DONATION` 메시지 필드는 `donationType`, `channelId`, `donatorChannelId`, `donatorNickname`, `payAmount`, `donationText`, `emojis`로 문서화되어 있으며, 공식 문서상 `payAmount` 타입은 `String`이다. 안정적인 event id 필드는 없다. bridge는 공식 문자열 payload를 양수 정수로 정규화하고, live payload 진단에서 숫자 타입이 보일 때를 대비해 숫자도 같은 범위에서 방어적으로 허용한다. webhook `eventId`는 bridge가 생성한 내부 중복 키다.
 공식 `CHAT` 메시지 필드는 `channelId`, `senderChannelId`, `profile.nickname`, `content`, `messageTime`, `emojis` 등을 포함한다. bridge는 `content`가 정확히 `!치지직마크 <금액>` 형식일 때만 금액을 정규화하고, `eventId`는 `chat-test-<uuid>`로 생성한다.
 
 각 handler는 `logFailure`로 감싸져 socket listener에서 promise rejection이 누락되지 않게 한다.

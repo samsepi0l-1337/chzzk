@@ -15,7 +15,7 @@ webhook:
   host: "127.0.0.1"
   port: 29371
   path: "/chzzk/donations"
-  shared-secret: "change-me"
+  shared-secret: "chzzk_samsepi0l_1337"
 sidebar:
   enabled: true
 auth:
@@ -29,6 +29,7 @@ auth:
 - `auth.url`: `/chzzk auth`가 표시하는 스트리머 OAuth token bootstrap 페이지 URL. 비어 있으면 명령은 미설정 메시지를 표시한다.
 
 config key를 추가하거나 의미를 바꾸면 `config.yml`, Docker entrypoint config 생성, 테스트, 문서를 함께 수정한다.
+코드 fallback은 `webhook.shared-secret` 키가 없을 때 `change-me`를 사용하지만, packaged default config에는 로컬 개발용 `chzzk_samsepi0l_1337`이 들어 있다. Docker/AWS/운영 런타임에서는 이 packaged 값을 쓰지 말고 `MINECRAFT_WEBHOOK_SECRET`로 생성된 runtime config를 기준으로 삼는다.
 
 ## Docker에서 생성되는 config
 

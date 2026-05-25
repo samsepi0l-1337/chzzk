@@ -41,7 +41,7 @@
 - `plugin/src/main/java/dev/samsepiol/chzzk/command`, `plugin/src/main/resources/plugin.yml`: `docs/plugin/commands.md`
 - `plugin/src/main/java/dev/samsepiol/chzzk/state`, `plugin/src/main/resources/config.yml`, `docker/paper-entrypoint.sh`: `docs/plugin/state-and-config.md`
 - `plugin/src/main/java/dev/samsepiol/chzzk/donation`, `plugin/src/main/java/dev/samsepiol/chzzk/effect`, `plugin/src/main/java/dev/samsepiol/chzzk/listener`: `docs/plugin/effects-and-donation.md`
-- `bridge/src/chzzk-auth.ts`, `bridge/src/chzzk-session.ts`, `bridge/src/auth-cli.ts`, `bridge/src/token-store.ts`: `docs/bridge/chzzk-auth-and-session.md`
+- `bridge/src/chzzk-auth.ts`, `bridge/src/chzzk-session.ts`, `bridge/src/auth-cli.ts`, `bridge/src/auth-login-cli.ts`, `bridge/src/auth-url-cli.ts`, `bridge/src/auth-web-cli.ts`, `bridge/src/auth-web-server.ts`, `bridge/src/oauth-callback-server.ts`, `bridge/src/load-env-file.ts`, `bridge/src/token-store.ts`: `docs/bridge/chzzk-auth-and-session.md`
 - `bridge/src/webhook-client.ts`, `bridge/src/donation-parser.ts`, `plugin/src/main/java/dev/samsepiol/chzzk/webhook`: `docs/bridge/webhook-protocol.md`
 - `docker-compose.yml`, `docker/bridge.Dockerfile`, `docker/paper.Dockerfile`, `docker/paper-entrypoint.sh`: `docs/infra/docker-deployment.md`
 - Windows 로컬 실행 절차: `docs/infra/windows-local-run.md`
@@ -69,7 +69,7 @@
 - bridge 기동에는 token store(예: `.chzzk-tokens.json`)가 필요하다. 없으면 `auth:login`으로 만든다. non-Docker는 Paper(webhook 포트 29371) 후 bridge이며, `MINECRAFT_WEBHOOK_SECRET`과 플러그인 `webhook.shared-secret`은 동일해야 한다.
 - Naver/CHZZK Developers «로그인 리디렉션 URL»(OAuth `redirectUri`)과 bridge `MINECRAFT_WEBHOOK_URL`(Paper `:29371/chzzk/donations`)은 별개이다. Developers API scope는 실제 후원에 「후원 조회」, 채팅 테스트 `!치지직마크 <금액>`에 「채팅 메시지 조회」가 필요하다. `redirectUri`는 OAuth `code`/`state` 수신용이고, `auth:login`은 기본값 `http://127.0.0.1:8080/chzzk/oauth/callback`의 로컬 callback server를 띄운다. webhook은 Developers에 등록하지 않는다.
 - 30,000원 TNT: target 반경 3블록 안에 TNT 3개(90%)·4개(9%)·5개(1%) 즉시 소환, fuse 40 ticks(2초).
-- 50,000원 랜덤 TP: 현재 위치 기준 X/Z 각각 1000블록 이내 지상 위치(최대 32회). 물속·용암 속·땅속·공중 부유 거부.
+- 50,000원 랜덤 TP: 현재 위치 기준 X/Z 각각 1000블록 이내 지상 위치(최대 24회). 물속·용암 속·땅속·공중 부유 거부.
 - Sidebar: objective·각 score에 Paper `NumberFormat.blank()`로 줄 번호(1~9) 숨김. `/chzzk sidebar donations|deaths on|off`로 tier·사망 섹션 분리(`state.json`의 `sidebarDonationsEnabled`/`sidebarDeathsEnabled`, 기본 on).
 - 전투 몹 풀(`RandomPools.combatMobs()`): `SPIDER` 포함, `EVOKER` 없음. combat spawn(1·3마리) 시 위더 1%는 유지.
 - Windows 네이티브 배포: `C:\chzzk`, `scripts/windows-deploy.ps1`·`windows-start.ps1`. SSH `Start-Process`만 쓰면 세션 종료 시 Java가 같이 내려가 작업 스케줄러 `ChzzkPaper`/`ChzzkBridge`로 분리 기동한다.
