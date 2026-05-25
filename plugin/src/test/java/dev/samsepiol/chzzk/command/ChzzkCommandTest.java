@@ -60,10 +60,12 @@ final class ChzzkCommandTest {
 
         command.onCommand(sender.asCommandSender(), null, "chzzk", new String[] {"auth"});
 
+        String authUrl = "http://43.203.108.176:8080/chzzk/oauth/login?secret=secret";
         assertEquals(List.of(Component.text("인증하기")
                 .color(NamedTextColor.AQUA)
                 .decorate(TextDecoration.UNDERLINED)
-                .clickEvent(ClickEvent.openUrl("http://43.203.108.176:8080/chzzk/oauth/login?secret=secret"))),
+                .clickEvent(ClickEvent.openUrl(authUrl)),
+                "CHZZK auth URL: " + authUrl),
                 sender.messages());
     }
 

@@ -15,7 +15,7 @@
 
 | 명령 | 동작 | 주요 서비스 |
 | --- | --- | --- |
-| `/chzzk auth` | 대상 스트리머 OAuth token bootstrap 페이지를 여는 `인증하기` 클릭 메시지를 보낸다. OP 권한이 없어도 사용할 수 있다. | `config.yml` `auth.url` |
+| `/chzzk auth` | 대상 스트리머 OAuth token bootstrap 페이지를 여는 `인증하기` 클릭 메시지와 콘솔/로그용 plain URL을 함께 보낸다. OP 권한이 없어도 사용할 수 있다. | `config.yml` `auth.url` |
 | `/chzzk target set <player|uuid>` | 기존 온라인 target sidebar를 먼저 지운 뒤 효과 대상 저장. 온라인 플레이어면 UUID와 현재 이름을 저장하고, 이름만 주면 이름 기준 target으로 저장한다. | `TargetService`, `PluginStateStore`, `SidebarService` |
 | `/chzzk target clear` | target을 지우고 sidebar를 기본 scoreboard로 되돌린다. | `TargetService`, `SidebarService` |
 | `/chzzk target status` | 현재 target과 availability를 표시한다. | `TargetService` |

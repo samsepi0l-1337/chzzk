@@ -22,6 +22,7 @@
 - If random teleport lands unsafe, do not expand search blindly; reject unsafe blocks and retry within X/Z +/-1000.
 - If sidebar line numbers show, do not change slots; preserve `DisplaySlot.SIDEBAR` and blank number formats.
 - If effects run off-thread, do not call Bukkit APIs directly; schedule onto the main thread.
+- If `/chzzk auth` must work from console or logs, do not send only a clickable Component; include the plain auth URL fallback.
 
 ## Failure Counteraction Rule
 

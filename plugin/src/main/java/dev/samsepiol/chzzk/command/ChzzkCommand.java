@@ -106,6 +106,7 @@ public final class ChzzkCommand implements TabExecutor {
                 .color(NamedTextColor.AQUA)
                 .decorate(TextDecoration.UNDERLINED)
                 .clickEvent(ClickEvent.openUrl(authUrl)));
+        sender.sendMessage("CHZZK auth URL: " + authUrl);
     }
 
     private void handleTarget(CommandSender sender, String[] args) {
