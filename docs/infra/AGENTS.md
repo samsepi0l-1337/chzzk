@@ -19,6 +19,7 @@
 - If AWS helper scripts are run with a non-default env file, do not document only `.env`; show the same `ENV_FILE` on deploy, verify, and backup commands.
 - If AWS provisioning appears to do nothing, do not bypass the safety gate; review `config/aws-ec2.env` and then set `AWS_EC2_APPLY=true` only when EC2 creation is intended.
 - If AWS deploy needs process supervision, do not add Docker; use `tmux` or `screen` sessions and verify them directly.
+- If EC2 OAuth callback fails with a public EIP/DNS redirect URI, do not bind the callback server to the public address; bind `0.0.0.0` and restrict `8080/tcp` to the administrator CIDR in the security group.
 - If Amazon Linux 2023 user-data fails with `curl-minimal` package conflicts, do not retry the same `curl` install; use `curl-minimal` and rerun bootstrap.
 - If AWS deploy fails because Gradle cannot find a Java compiler, do not treat Java 21 runtime as sufficient; install the Corretto 21 `devel` package.
 - If `ss` reports `[::ffff:127.0.0.1]:29371`, do not open or close ports; treat it as loopback-only IPv4-mapped listening.

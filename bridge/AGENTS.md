@@ -10,8 +10,9 @@
 - `bridge` does not auto-load `.env`; local non-Docker runs need process env or `auth:* -- --env-file`.
 - Docker injects `CHZZK_TOKEN_STORE=/data/.chzzk-tokens.json` and `MINECRAFT_WEBHOOK_URL=http://paper:29371/chzzk/donations`.
 - `CHZZK_CHANNEL_ID` is required for live session filtering; subscription identity comes from OAuth/token account.
-- Token bootstrap needs an existing token store or `CHZZK_REFRESH_TOKEN`; do not log token values.
+- Token bootstrap needs an existing token store or `auth:login`; do not log token values.
 - CHZZK donation backfill is unsupported; only realtime Session `DONATION` is handled.
+- Chat test command `!치지직마크 <amount>` is realtime Session `CHAT` only and requires `채팅 메시지 조회` OAuth scope.
 - Bridge-generated webhook `eventId` cannot dedupe upstream redelivery of the same official donation.
 
 ## Failure Knowledge
@@ -20,7 +21,8 @@
 - If bridge-only auth needs env, do not add dotenv autoload; use process env or `auth:* -- --env-file`.
 - If Socket.IO crashes in Docker/Node, do not change CHZZK protocol handling first; preserve `forceNode: true` and inspect transport/runtime.
 - If signature verification fails, do not resend blindly; compare bridge `MINECRAFT_WEBHOOK_SECRET` with plugin runtime `webhook.shared-secret`.
-- If non-target donations appear, do not widen delivery; drop missing or mismatched `DONATION.channelId` before webhook delivery.
+- If non-target donations or chat tests appear, do not widen delivery; drop missing or mismatched `channelId` before webhook delivery.
+- If chat tests do not arrive, do not debug Minecraft effects first; inspect chat subscription scope/logs.
 
 ## Failure Counteraction Rule
 

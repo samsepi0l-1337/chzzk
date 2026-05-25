@@ -5,7 +5,7 @@ import { join, resolve } from "node:path";
 import { describe, expect, test } from "vitest";
 
 const repoRoot = resolve(__dirname, "../..");
-const scriptNames = ["aws-ec2-provision.sh", "aws-ec2-user-data.sh", "aws-ec2-bootstrap.sh", "aws-ec2-deploy.sh", "aws-ec2-pregenerate.sh", "aws-ec2-verify.sh", "aws-ec2-backup.sh"];
+const scriptNames = ["aws-ec2-provision.sh", "aws-ec2-user-data.sh", "aws-ec2-bootstrap.sh", "aws-ec2-auth-login.sh", "aws-ec2-deploy.sh", "aws-ec2-pregenerate.sh", "aws-ec2-verify.sh", "aws-ec2-backup.sh"];
 const scriptPaths = scriptNames.map((name) => join(repoRoot, "scripts", name));
 const awsDocsFile = join(repoRoot, "docs/infra/aws-ec2-deployment.md");
 const awsConfigExampleFile = join(repoRoot, "config/aws-ec2.env.example");
@@ -52,7 +52,15 @@ if [ "$1" = "compose" ]; then exit 0; fi
 exit 1
 `;
 
-const deployEnv = { EULA: "true", CHZZK_CLIENT_ID: "client", CHZZK_CLIENT_SECRET: "secret", CHZZK_CHANNEL_ID: "channel", MINECRAFT_WEBHOOK_SECRET: "webhook" };
+const deployEnv = {
+  EULA: "true",
+  CHZZK_CLIENT_ID: "client",
+  CHZZK_CLIENT_SECRET: "secret",
+  CHZZK_CHANNEL_ID: "channel",
+  CHZZK_REDIRECT_URI: "http://203.0.113.42:8080/chzzk/oauth/callback",
+  CHZZK_AUTH_PAGE_SECRET: "page-secret",
+  MINECRAFT_WEBHOOK_SECRET: "webhook"
+};
 const provisionBaseConfig = ["AWS_REGION=ap-northeast-2", "AWS_EC2_APPLY=false", "EC2_INSTANCE_TYPE=t4g.xlarge", "EC2_KEY_NAME=test-key", "SSH_CIDR=203.0.113.10/32", "MINECRAFT_CIDR=0.0.0.0/0", "ROOT_VOLUME_SIZE_GB=20", "EC2_USER_DATA_FILE="];
 
 function writeTempAwsConfig(prefix: string, extraLines: string[] = []) {
@@ -135,6 +143,8 @@ describe("AWS EC2 deployment scripts", () => {
     expect(config).toContain("EC2_KEY_NAME=");
     expect(config).toContain("SSH_CIDR=203.0.113.10/32");
     expect(config).toContain("MINECRAFT_CIDR=0.0.0.0/0");
+    expect(config).toContain("CHZZK_AUTH_CALLBACK_CIDR=");
+    expect(config).toContain("CHZZK_AUTH_CALLBACK_PORT=8080");
     expect(config).toContain("ROOT_VOLUME_SIZE_GB=20");
     expect(config).toContain("AWS_EC2_APPLY=false");
     expect(config).not.toContain("MINECRAFT_WEBHOOK_SECRET");
@@ -185,6 +195,26 @@ exit 99
     expect(log).not.toContain("--port 29371");
   });
 
+  test("provision script can open the CHZZK OAuth callback port to one CIDR", () => {
+    const { tempDir, configFile } = writeTempAwsConfig("chzzk-aws-auth-callback-", [
+      "EC2_SECURITY_GROUP_ID=sg-existing",
+      "CHZZK_AUTH_CALLBACK_CIDR=203.0.113.10/32",
+      "CHZZK_AUTH_CALLBACK_PORT=8080"
+    ]);
+
+    const { result, log } = runScriptWithFakes(
+      "aws-ec2-provision.sh",
+      passingComposeFake,
+      { CONFIG_FILE: configFile, AWS_EC2_APPLY: "true" },
+      { aws: fakeApplyAws }
+    );
+    rmSync(tempDir, { recursive: true, force: true });
+
+    expect(result.status).toBe(0);
+    expect(log).toContain("--port 8080 --cidr 203.0.113.10/32");
+    expect(log).not.toContain("--port 29371");
+  });
+
   test("provision script creates a reusable security group without contaminating the id", () => {
     const { tempDir, configFile } = writeTempAwsConfig("chzzk-aws-sg-");
 
@@ -230,7 +260,10 @@ exit 99
     expect(log).toContain("tmux new-session -d -s chzzk-paper");
     expect(log).toContain("tmux new-session -d -s chzzk-bridge");
     expect(log).not.toContain("compose");
-    expect(readFileSync(join(runtimeDir, "paper/plugins/ChzzkDonation/config.yml"), "utf8")).toContain('host: "127.0.0.1"');
+    const pluginConfig = readFileSync(join(runtimeDir, "paper/plugins/ChzzkDonation/config.yml"), "utf8");
+    expect(pluginConfig).toContain('host: "127.0.0.1"');
+    expect(pluginConfig).toContain("auth:");
+    expect(pluginConfig).toContain("http://203.0.113.42:8080/chzzk/oauth/login?secret=page-secret");
     const serverProperties = readFileSync(join(runtimeDir, "paper/server.properties"), "utf8");
     expect(serverProperties).toContain("network-compression-threshold=256");
     expect(serverProperties).toContain("use-native-transport=true");
@@ -251,6 +284,42 @@ exit 99
     expect(bridgeStarter).toContain("dist/index.js");
     expect(bridgeStarter).not.toContain("npm\" run start");
     rmSync(runtimeDir, { recursive: true, force: true });
+  });
+
+  test("auth login script builds bridge and stores tokens in the AWS runtime directory", () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "chzzk-aws-auth-"));
+    const envFile = join(tempDir, ".env");
+    const runtimeDir = join(tempDir, "runtime");
+    writeFileSync(
+      envFile,
+      [
+        "CHZZK_CLIENT_ID=client",
+        "CHZZK_CLIENT_SECRET=secret",
+        "CHZZK_REDIRECT_URI=http://203.0.113.42:8080/chzzk/oauth/callback",
+        "CHZZK_AUTH_CALLBACK_BIND_HOST=0.0.0.0"
+      ].join("\n")
+    );
+    const fakeNpmAuth = `#!/usr/bin/env bash
+printf 'npm %s\\n' "$*" >> "$DOCKER_LOG"
+case "$*" in
+  *"run auth:login"*) mkdir -p "$(dirname "$CHZZK_TOKEN_STORE")"; printf '{}' > "$CHZZK_TOKEN_STORE"; exit 0 ;;
+esac
+`;
+
+    const { result, log } = runScriptWithFakes(
+      "aws-ec2-auth-login.sh",
+      passingComposeFake,
+      { AWS_RUNTIME_DIR: runtimeDir, ENV_FILE: envFile, NPM_CMD: "npm" },
+      { npm: fakeNpmAuth }
+    );
+    const tokenStore = join(runtimeDir, "bridge/.chzzk-tokens.json");
+
+    expect(result.status).toBe(0);
+    expect(log).toContain("npm --prefix");
+    expect(log).toContain("run build");
+    expect(log).toContain("run auth:login -- --env-file");
+    expect(existsSync(tokenStore)).toBe(true);
+    rmSync(tempDir, { recursive: true, force: true });
   });
 
   test("deploy script reuses the selected env file for native startup scripts", () => {
@@ -382,6 +451,7 @@ exit 1
     expect(rootPackage.scripts["aws:ec2:provision"]).toBe(
       "AWS_EC2_APPLY=true bash scripts/aws-ec2-provision.sh"
     );
+    expect(rootPackage.scripts["aws:ec2:auth"]).toBe("bash scripts/aws-ec2-auth-login.sh");
     expect(rootPackage.scripts["aws:ec2:deploy"]).toBe("bash scripts/aws-ec2-deploy.sh");
     expect(rootPackage.scripts["aws:ec2:pregenerate"]).toBe("bash scripts/aws-ec2-pregenerate.sh");
     expect(rootPackage.scripts["aws:ec2:verify"]).toBe("bash scripts/aws-ec2-verify.sh");

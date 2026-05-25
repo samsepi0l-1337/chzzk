@@ -16,30 +16,43 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabExecutor;
 
 public final class ChzzkCommand implements TabExecutor {
+    private static final String ADMIN_PERMISSION = "chzzkdonation.admin";
+
     private final TargetService targetService;
     private final SidebarService sidebarService;
     private final DeathCountService deathCountService;
     private final DonationService donationService;
     private final Runnable reload;
+    private final String authUrl;
 
     public ChzzkCommand(
             TargetService targetService,
             SidebarService sidebarService,
             DeathCountService deathCountService,
             DonationService donationService,
-            Runnable reload) {
+            Runnable reload,
+            String authUrl) {
         this.targetService = targetService;
         this.sidebarService = sidebarService;
         this.deathCountService = deathCountService;
         this.donationService = donationService;
         this.reload = reload;
+        this.authUrl = authUrl == null ? "" : authUrl.trim();
     }
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (args.length == 0) {
-            sender.sendMessage("/chzzk <target|sidebar|deaths|simulate|reload>");
+            sender.sendMessage("/chzzk <auth|target|sidebar|deaths|simulate|reload>");
             sender.sendMessage("/chzzk sidebar <on|off|donations|deaths> [on|off]");
+            return true;
+        }
+        if ("auth".equals(args[0])) {
+            handleAuth(sender);
+            return true;
+        }
+        if (!sender.hasPermission(ADMIN_PERMISSION)) {
+            sender.sendMessage("You do not have permission to use this command.");
             return true;
         }
         switch (args[0]) {
@@ -59,7 +72,10 @@ public final class ChzzkCommand implements TabExecutor {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
-            return List.of("target", "sidebar", "deaths", "simulate", "reload");
+            if (!sender.hasPermission(ADMIN_PERMISSION)) {
+                return List.of("auth");
+            }
+            return List.of("auth", "target", "sidebar", "deaths", "simulate", "reload");
         }
         if (args.length == 2 && "target".equals(args[0])) {
             return List.of("set", "clear", "status");
@@ -75,6 +91,15 @@ public final class ChzzkCommand implements TabExecutor {
             return List.of("reset");
         }
         return List.of();
+    }
+
+    private void handleAuth(CommandSender sender) {
+        if (authUrl.isBlank()) {
+            sender.sendMessage("CHZZK auth URL is not configured.");
+            return;
+        }
+        sender.sendMessage("CHZZK streamer auth URL:");
+        sender.sendMessage(authUrl);
     }
 
     private void handleTarget(CommandSender sender, String[] args) {

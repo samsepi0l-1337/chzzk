@@ -13,6 +13,7 @@
 
 - If an operator command is ambiguous, do not guess state changes; reject with usage.
 - If simulate fails with no target, do not bypass target validation; set target first.
+- If a public subcommand must work without OP, do not put a root command permission in `plugin.yml`; enforce admin-only subcommands in command code.
 
 ## Failure Counteraction Rule
 

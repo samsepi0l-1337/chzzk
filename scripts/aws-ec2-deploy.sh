@@ -122,6 +122,20 @@ write_paper_config() {
   local secret_file
   secret_file=$(mktemp)
   printf '%s' "$secret" > "$secret_file"
+  local auth_url
+  auth_url=$(read_env_value CHZZK_AUTH_URL)
+  if [ -z "$auth_url" ]; then
+    local redirect_uri
+    local page_secret
+    redirect_uri=$(read_env_value CHZZK_REDIRECT_URI)
+    page_secret=$(read_env_value CHZZK_AUTH_PAGE_SECRET)
+    if [ -n "$redirect_uri" ] && [ -n "$page_secret" ]; then
+      auth_url="${redirect_uri%/chzzk/oauth/callback}/chzzk/oauth/login?secret=${page_secret}"
+    fi
+  fi
+  local auth_url_file
+  auth_url_file=$(mktemp)
+  printf '%s' "$auth_url" > "$auth_url_file"
 
   mkdir -p "$PAPER_DIR/plugins/ChzzkDonation"
   cat > "$PAPER_DIR/plugins/ChzzkDonation/config.yml" <<EOF
@@ -133,8 +147,11 @@ webhook:
 $(sed 's/^/    /' "$secret_file")
 sidebar:
   enabled: true
+auth:
+  url: |-
+$(sed 's/^/    /' "$auth_url_file")
 EOF
-  rm -f "$secret_file"
+  rm -f "$secret_file" "$auth_url_file"
 }
 
 set_server_property() {

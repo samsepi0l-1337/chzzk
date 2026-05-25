@@ -5,8 +5,7 @@ api-version: "1.21"
 commands:
   chzzk:
     description: Manage CHZZK donation effects.
-    usage: /chzzk <target|sidebar|deaths|simulate|reload>
-    permission: chzzkdonation.admin
+    usage: /chzzk <auth|target|sidebar|deaths|simulate|reload>
 permissions:
   chzzkdonation.admin:
     description: Allows CHZZK donation administration.

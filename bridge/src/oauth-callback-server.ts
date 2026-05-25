@@ -5,6 +5,7 @@ import { parseOAuthCallback } from "./chzzk-oauth";
 export interface OAuthCallbackServerOptions {
   redirectUri: string;
   expectedState: string;
+  bindHost?: string;
   timeoutMs?: number;
 }
 
@@ -43,7 +44,7 @@ export function startOAuthCallbackServer(
       settleFailure(error as Error);
     });
     server.listen({
-      host: redirectUrl.hostname,
+      host: options.bindHost ?? defaultBindHost(redirectUrl),
       port: getPort(redirectUrl)
     });
 
@@ -65,6 +66,17 @@ export function startOAuthCallbackServer(
       action();
     }
   });
+}
+
+function defaultBindHost(url: URL): string {
+  if (isLoopbackHost(url.hostname)) {
+    return url.hostname;
+  }
+  return "0.0.0.0";
+}
+
+function isLoopbackHost(hostname: string): boolean {
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
 }
 
 function getPort(url: URL): number {

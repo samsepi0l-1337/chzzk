@@ -271,7 +271,7 @@ describe("e2e-tools", () => {
       "CHZZK_CLIENT_SECRET",
       "CHZZK_CHANNEL_ID",
       "MINECRAFT_WEBHOOK_SECRET",
-      "CHZZK_REFRESH_TOKEN or token store"
+      "token store"
     ]);
     expect(result.present).toEqual([]);
   });
@@ -283,15 +283,14 @@ describe("e2e-tools", () => {
         CHZZK_CLIENT_SECRET: "client-secret",
         CHZZK_CHANNEL_ID: "channel",
         MINECRAFT_WEBHOOK_SECRET: "webhook-secret",
-        CHZZK_REFRESH_TOKEN: "refresh-token",
+        CHZZK_TOKEN_STORE: "/tmp/token-store.json",
         WEBHOOK_MAX_ATTEMPTS: "0"
       },
-      async () => false
+      async () => true
     );
 
     expect(result.ok).toBe(false);
-    expect(result.present).toContain("CHZZK_REFRESH_TOKEN");
+    expect(result.present).toContain("token store");
     expect(result.invalid).toEqual(["WEBHOOK_MAX_ATTEMPTS must be greater than 0"]);
-    expect(JSON.stringify(result)).not.toContain("refresh-token");
   });
 });

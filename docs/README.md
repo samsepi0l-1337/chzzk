@@ -7,11 +7,11 @@
 | 작업 영역 | 먼저 볼 문서 | 기준 내용 |
 | --- | --- | --- |
 | 전체 구조, 서비스 경계 | [architecture-overview.md](architecture-overview.md) | Paper 1.21.1 / Java 21, bridge와 plugin 책임 경계 |
-| 후원 이벤트 처리 흐름 | [flows/event-flow.md](flows/event-flow.md) | CHZZK Session 실시간 `DONATION`부터 Minecraft 효과까지의 단계 |
+| 후원 이벤트 처리 흐름 | [flows/event-flow.md](flows/event-flow.md) | CHZZK Session 실시간 `DONATION`과 채팅 테스트 명령부터 Minecraft 효과까지의 단계 |
 | Paper 플러그인 명령 | [plugin/commands.md](plugin/commands.md) | `/chzzk` 관리자 명령과 권한 |
 | Paper 플러그인 상태/설정 | [plugin/state-and-config.md](plugin/state-and-config.md) | `config.yml`, Docker 생성 config, runtime `state.json`, target 저장 |
 | 후원 티어와 게임 효과 | [plugin/effects-and-donation.md](plugin/effects-and-donation.md) | `DonationTier` 정확 금액 매칭과 효과 실행 규칙 |
-| CHZZK 인증/세션 브리지 | [bridge/chzzk-auth-and-session.md](bridge/chzzk-auth-and-session.md) | OAuth/token, Session 구독, `CHZZK_CHANNEL_ID` 필터, backfill 불가 |
+| CHZZK 인증/세션 브리지 | [bridge/chzzk-auth-and-session.md](bridge/chzzk-auth-and-session.md) | OAuth/token, Session 구독, `CHZZK_CHANNEL_ID` 필터, 채팅 테스트, backfill 불가 |
 | Minecraft webhook 프로토콜 | [bridge/webhook-protocol.md](bridge/webhook-protocol.md) | HMAC, payload, `amount` int 계약, 중복 한계, retry/status |
 | Docker 실행/배포 | [infra/docker-deployment.md](infra/docker-deployment.md) | compose, Paper-only smoke, 포트와 volume |
 | Windows 로컬 실행 | [infra/windows-local-run.md](infra/windows-local-run.md) | Docker 없이 Paper 먼저, bridge 나중 실행 |

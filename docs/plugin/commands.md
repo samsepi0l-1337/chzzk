@@ -4,16 +4,18 @@
 
 ## 권한
 
-모든 `/chzzk` 하위 명령은 `plugin.yml`의 `chzzkdonation.admin` 권한 아래 있다.
+`/chzzk auth`는 OP가 아니어도 실행할 수 있다. 나머지 `/chzzk` 하위 명령은 command 코드에서 `chzzkdonation.admin` 권한을 검사한다.
 
 - 기본값: `op`
 - 목적: v1 관리자 명령을 단일 권한으로 보호한다.
+- `/chzzk` root command 자체에는 `plugin.yml` permission을 걸지 않는다. root permission을 걸면 공개 `auth` 하위 명령까지 Bukkit이 차단한다.
 - 권한을 세분화하려면 `plugin.yml`, 명령 테스트, 운영 문서를 함께 수정한다.
 
 ## 하위 명령
 
 | 명령 | 동작 | 주요 서비스 |
 | --- | --- | --- |
+| `/chzzk auth` | 대상 스트리머 OAuth token bootstrap 페이지 URL을 표시한다. OP 권한이 없어도 사용할 수 있다. | `config.yml` `auth.url` |
 | `/chzzk target set <player|uuid>` | 기존 온라인 target sidebar를 먼저 지운 뒤 효과 대상 저장. 온라인 플레이어면 UUID와 현재 이름을 저장하고, 이름만 주면 이름 기준 target으로 저장한다. | `TargetService`, `PluginStateStore`, `SidebarService` |
 | `/chzzk target clear` | target을 지우고 sidebar를 기본 scoreboard로 되돌린다. | `TargetService`, `SidebarService` |
 | `/chzzk target status` | 현재 target과 availability를 표시한다. | `TargetService` |
@@ -29,7 +31,8 @@
 
 현재 tab complete는 정적 목록이다.
 
-- 1번째 인자: `target`, `sidebar`, `deaths`, `simulate`, `reload`
+- 1번째 인자: `auth`, `target`, `sidebar`, `deaths`, `simulate`, `reload`
+- admin 권한이 없으면 1번째 인자 completion은 `auth`만 반환한다.
 - `target`: `set`, `clear`, `status`
 - `sidebar`: `on`, `off`, `donations`, `deaths`
 - `sidebar donations` / `sidebar deaths`: `on`, `off`

@@ -97,7 +97,8 @@ public final class ChzzkDonationPlugin extends JavaPlugin {
                 sidebarService,
                 deathCountService,
                 donationService,
-                this::reloadChzzk);
+                this::reloadChzzk,
+                getConfig().getString("auth.url", ""));
         command.setExecutor(executor);
         command.setTabCompleter(executor);
     }

@@ -302,15 +302,18 @@ describe("Docker runtime configuration", () => {
           ...process.env,
           EULA: "true",
           MINECRAFT_WEBHOOK_SECRET: "entrypoint-secret",
+          CHZZK_REDIRECT_URI: "http://203.0.113.42:8080/chzzk/oauth/callback",
+          CHZZK_AUTH_PAGE_SECRET: "page-secret",
           PAPER_SERVER_DIR: serverDir,
           PAPER_PLUGIN_JAR: pluginJar
         }
       });
 
       expect(readFileSync(join(serverDir, "eula.txt"), "utf8")).toBe("eula=true\n");
-      expect(readFileSync(join(serverDir, "plugins/ChzzkDonation/config.yml"), "utf8")).toContain(
-        "shared-secret: |-\n    entrypoint-secret"
-      );
+      const pluginConfig = readFileSync(join(serverDir, "plugins/ChzzkDonation/config.yml"), "utf8");
+      expect(pluginConfig).toContain("shared-secret: |-\n    entrypoint-secret");
+      expect(pluginConfig).toContain("auth:");
+      expect(pluginConfig).toContain("http://203.0.113.42:8080/chzzk/oauth/login?secret=page-secret");
     } finally {
       rmSync(tempDir, { force: true, recursive: true });
     }

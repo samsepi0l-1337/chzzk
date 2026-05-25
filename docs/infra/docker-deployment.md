@@ -77,23 +77,29 @@ compose의 `service_healthy`는 Docker healthcheck 기준 readiness를 보장한
 
 ## Token Bootstrap
 
-라이브 session 전에 token store가 없으면 bridge는 `CHZZK_REFRESH_TOKEN`으로 `/data/.chzzk-tokens.json`을 생성한 뒤 같은 시작 흐름에서 session을 시작한다. 생성된 token store는 `bridge-data` volume에 남고 이후 실행에서 재사용된다.
-
-`.env`에 `CHZZK_REFRESH_TOKEN`을 넣은 첫 실행 예:
+라이브 session 전에 token store가 없으면 먼저 OAuth login으로 access token과 refresh token을 저장한다.
 
 ```bash
-docker compose up --build
+npm run auth:login -- --env-file .env
 ```
 
-수동 bootstrap도 가능하다.
-
-refresh token 예:
+이 명령은 기본적으로 `bridge/.chzzk-tokens.json`을 만든다. Docker volume에 복사하려면 다음을 실행한다.
 
 ```bash
-docker compose -f docker-compose.yml run --rm bridge npm run auth -- --refresh-token "$CHZZK_REFRESH_TOKEN"
+docker compose -f docker-compose.yml run --rm -v "$PWD/bridge/.chzzk-tokens.json:/tmp/.chzzk-tokens.json:ro" bridge sh -lc 'cp /tmp/.chzzk-tokens.json "$CHZZK_TOKEN_STORE"'
 ```
 
-이 명령은 `bridge-data` volume에 token JSON을 저장한다.
+생성된 token store는 `bridge-data` volume에 남고 이후 실행에서 재사용된다.
+
+```bash
+docker compose -f docker-compose.yml up --build
+```
+
+CHZZK Developers callback URI에는 `.env`의 `CHZZK_REDIRECT_URI`와 같은 값을 등록한다. 기본값:
+
+```text
+http://127.0.0.1:8080/chzzk/oauth/callback
+```
 
 ## Build Commands
 

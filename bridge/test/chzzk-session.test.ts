@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createUserSessionUrl,
   startChzzkDonationSession,
+  subscribeChatEvent,
   subscribeDonationEvent
 } from "../src/chzzk-session";
 
@@ -129,6 +130,41 @@ describe("subscribeDonationEvent", () => {
   });
 });
 
+describe("subscribeChatEvent", () => {
+  it("subscribes the connected session to chat events", async () => {
+    const requests: { url: string; body?: BodyInit | null }[] = [];
+    await subscribeChatEvent(sessionConfig, "session-key", async (url, init) => {
+      requests.push({ url, body: init.body });
+      return new Response(null, { status: 204 });
+    });
+
+    expect(requests).toEqual([
+      {
+        url: "https://chzzk.test/open/v1/sessions/events/subscribe/chat?sessionKey=session-key",
+        body: undefined
+      }
+    ]);
+  });
+
+  it("reports failed chat subscriptions", async () => {
+    await expect(subscribeChatEvent(sessionConfig, "session-key", async () =>
+      new Response("bad session", { status: 400 })
+    )).rejects.toThrow(/400 bad session/);
+  });
+
+  it("uses the official CHZZK base URL for chat subscriptions by default", async () => {
+    const requests: string[] = [];
+    await subscribeChatEvent({ accessToken: "access" }, "session-key", async (url) => {
+      requests.push(url);
+      return new Response(null, { status: 204 });
+    });
+
+    expect(requests).toEqual([
+      "https://openapi.chzzk.naver.com/open/v1/sessions/events/subscribe/chat?sessionKey=session-key"
+    ]);
+  });
+});
+
 describe("startChzzkDonationSession", () => {
   beforeEach(() => {
     ioMock.mockClear();
@@ -173,6 +209,26 @@ describe("startChzzkDonationSession", () => {
       donatorNickname: "missing-channel",
       donationText: "ignored"
     });
+    socket.emit("CHAT", {
+      channelId: "target-channel",
+      profile: { nickname: "chat-tester" },
+      content: "!치지직마크 2,000",
+      messageTime: Date.parse("2026-05-05T00:00:00.000Z")
+    });
+    socket.emit("CHAT", {
+      channelId: "other-channel",
+      profile: { nickname: "ignored-chat" },
+      content: "!치지직마크 3,000"
+    });
+    socket.emit("CHAT", {
+      profile: { nickname: "missing-channel-chat" },
+      content: "!치지직마크 4,000"
+    });
+    socket.emit("CHAT", {
+      channelId: "target-channel",
+      profile: { nickname: "normal-chat" },
+      content: "hello"
+    });
     await flush();
 
     expect(socketInstance).toBe(socket);
@@ -183,15 +239,27 @@ describe("startChzzkDonationSession", () => {
       timeout: 3000,
       transports: ["websocket"]
     });
-    expect(fetchCalls[1]).toEqual({
-      url: "https://chzzk.test/open/v1/sessions/events/subscribe/donation?sessionKey=session-1",
-      body: undefined
-    });
-    expect(sent).toHaveLength(1);
+    expect(fetchCalls.slice(1)).toEqual([
+      {
+        url: "https://chzzk.test/open/v1/sessions/events/subscribe/donation?sessionKey=session-1",
+        body: undefined
+      },
+      {
+        url: "https://chzzk.test/open/v1/sessions/events/subscribe/chat?sessionKey=session-1",
+        body: undefined
+      }
+    ]);
+    expect(sent).toHaveLength(2);
     expect(sent[0]).toMatchObject({
       amount: 1000,
       donatorNickname: "viewer",
       message: "hello"
+    });
+    expect(sent[1]).toMatchObject({
+      amount: 2000,
+      donatorNickname: "chat-tester",
+      message: "chat command: !치지직마크 2,000",
+      receivedAt: "2026-05-05T00:00:00.000Z"
     });
   });
 
@@ -253,6 +321,28 @@ describe("startChzzkDonationSession", () => {
       donationText: "z"
     });
     socket.emit("message", {
+      eventType: "CHAT",
+      data: {
+        channelId: "target-channel",
+        profile: { nickname: "chat-a" },
+        content: "!치지직마크 10,000"
+      }
+    });
+    socket.emit("message", {
+      type: "CHAT",
+      data: {
+        channelId: "target-channel",
+        profile: { nickname: "chat-b" },
+        content: "!치지직마크 30,000"
+      }
+    });
+    socket.emit("message", {
+      eventType: "CHAT",
+      channelId: "target-channel",
+      profile: { nickname: "chat-c" },
+      content: "!치지직마크 50,000"
+    });
+    socket.emit("message", {
       eventType: "DONATION",
       data: {
         channelId: "other-channel",
@@ -272,15 +362,21 @@ describe("startChzzkDonationSession", () => {
     socket.emit("message", { eventType: "IGNORED" });
     await flush();
 
-    expect(subscribed).toEqual([
+    expect(subscribed).toHaveLength(4);
+    expect(subscribed).toEqual(expect.arrayContaining([
       "https://chzzk.test/open/v1/sessions/events/subscribe/donation?sessionKey=event-type-key",
-      "https://chzzk.test/open/v1/sessions/events/subscribe/donation?sessionKey=type-key"
-    ]);
-    expect(sent).toHaveLength(3);
+      "https://chzzk.test/open/v1/sessions/events/subscribe/chat?sessionKey=event-type-key",
+      "https://chzzk.test/open/v1/sessions/events/subscribe/donation?sessionKey=type-key",
+      "https://chzzk.test/open/v1/sessions/events/subscribe/chat?sessionKey=type-key"
+    ]));
+    expect(sent).toHaveLength(6);
     expect(sent).toEqual([
       expect.objectContaining({ amount: 2000, donatorNickname: "a" }),
       expect.objectContaining({ amount: 3000, donatorNickname: "b" }),
-      expect.objectContaining({ amount: 4000, donatorNickname: "c" })
+      expect.objectContaining({ amount: 4000, donatorNickname: "c" }),
+      expect.objectContaining({ amount: 10000, donatorNickname: "chat-a" }),
+      expect.objectContaining({ amount: 30000, donatorNickname: "chat-b" }),
+      expect.objectContaining({ amount: 50000, donatorNickname: "chat-c" })
     ]);
   });
 
@@ -303,6 +399,11 @@ describe("startChzzkDonationSession", () => {
 
     socket.emit("SYSTEM", { type: "connected", data: { sessionKey: "bad" } });
     socket.emit("DONATION", { channelId: "target-channel", payAmount: "1000" });
+    socket.emit("CHAT", {
+      channelId: "target-channel",
+      profile: { nickname: "chat" },
+      content: "!치지직마크 1000"
+    });
     socket.emit("message", {
       eventType: "SYSTEM",
       data: { type: "connected", data: { sessionKey: "bad-typed" } }
@@ -321,6 +422,10 @@ describe("startChzzkDonationSession", () => {
     );
     expect(logger.error).toHaveBeenCalledWith(
       "CHZZK DONATION delivery failed",
+      expect.any(Error)
+    );
+    expect(logger.error).toHaveBeenCalledWith(
+      "CHZZK CHAT command delivery failed",
       expect.any(Error)
     );
     expect(logger.error).toHaveBeenCalledWith(

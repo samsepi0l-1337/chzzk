@@ -5,3 +5,5 @@ webhook:
   shared-secret: "chzzk_samsepi0l_1337"
 sidebar:
   enabled: true
+auth:
+  url: ""

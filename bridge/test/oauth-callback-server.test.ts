@@ -142,4 +142,23 @@ describe("startOAuthCallbackServer", () => {
       });
     });
   });
+
+  it("listens on all interfaces for non-loopback redirect hosts", async () => {
+    const port = await getFreePort();
+    const callbackPromise = startOAuthCallbackServer({
+      redirectUri: `http://203.0.113.42:${port}/chzzk/oauth/callback`,
+      expectedState: "expected-state"
+    });
+
+    const responsePromise = fetch(
+      `http://127.0.0.1:${port}/chzzk/oauth/callback?code=code-value&state=expected-state`
+    );
+    await expect(callbackPromise).resolves.toEqual({
+      code: "code-value",
+      state: "expected-state"
+    });
+
+    const response = await responsePromise;
+    expect(response.status).toBe(200);
+  });
 });

@@ -187,13 +187,13 @@ npm run e2e:health
 npm run e2e:check-env
 ```
 
-`bridge`는 `.env`를 자동 로드하지 않는다. Docker 없이 실행할 때는 현재 shell의 프로세스 환경 변수로 `CHZZK_CLIENT_ID`, `CHZZK_CLIENT_SECRET`, `CHZZK_CHANNEL_ID`, `MINECRAFT_WEBHOOK_SECRET`, token store 또는 `CHZZK_REFRESH_TOKEN`을 설정한다.
+`bridge`는 `.env`를 자동 로드하지 않는다. Docker 없이 실행할 때는 현재 shell의 프로세스 환경 변수로 `CHZZK_CLIENT_ID`, `CHZZK_CLIENT_SECRET`, `CHZZK_CHANNEL_ID`, `MINECRAFT_WEBHOOK_SECRET`, token store 경로를 설정한다. token store가 없으면 `npm run auth:login -- --env-file .env`로 만든다.
 
 ### Phase 4: live CHZZK
 
 credential과 실제 후원이 필요한 수동 단계다. 체크리스트는 `scripts/e2e/live-chzzk-checklist.md`에 있다.
 
-1. CHZZK credential, `CHZZK_CHANNEL_ID`, webhook secret, token store 또는 `CHZZK_REFRESH_TOKEN`을 준비한다.
+1. CHZZK credential, `CHZZK_CHANNEL_ID`, webhook secret, token store를 준비한다. 채팅 테스트까지 확인하려면 OAuth scope에 `후원 조회`와 `채팅 메시지 조회`를 모두 포함한다.
 2. Paper를 먼저 띄우고 `npm run e2e:health`로 webhook readiness를 확인한다.
 3. `npm run e2e:check-env`로 bridge env를 확인한다.
 4. `npm --prefix bridge run start`로 bridge를 시작한다.

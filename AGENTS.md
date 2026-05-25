@@ -66,11 +66,11 @@
 - Minecraft/Paper 런타임은 1.21.1 / Java 21로 고정한다(`plugin/build.gradle.kts`, `docker/paper.Dockerfile`). Paper 1.21.1에는 scoreboard 왼쪽 `DisplaySlot`이 없고 `DisplaySlot.SIDEBAR`만 사용한다.
 - 공식 `DONATION` payload에 안정 event id가 없어 bridge가 webhook `eventId`를 생성한다. upstream이 동일 후원을 재전달하면 plugin dedupe가 막지 못할 수 있다.
 - 마인크래프트에서 후원 효과를 받을 플레이어는 `config.yml`이 아니라 게임 내 `/chzzk target set <플레이어>`로 지정한다. 플러그인만 검증할 때는 `/chzzk simulate <금액>`(tier 금액과 정확히 일치)을 사용한다.
-- bridge 기동에는 token store(예: `.chzzk-tokens.json`) 또는 `CHZZK_REFRESH_TOKEN`이 필요하다. non-Docker는 Paper(webhook 포트 29371) 후 bridge이며, `MINECRAFT_WEBHOOK_SECRET`과 플러그인 `webhook.shared-secret`은 동일해야 한다.
-- Naver/CHZZK Developers «로그인 리디렉션 URL»(OAuth `redirectUri`)과 bridge `MINECRAFT_WEBHOOK_URL`(Paper `:29371/chzzk/donations`)은 별개이다. Developers API scope는 「후원 조회」만 필요하다(Session `DONATION` 구독). `redirectUri`는 OAuth `code`/`state` 수신용이고, `auth:login`은 기본값 `http://127.0.0.1:8080/chzzk/oauth/callback`의 로컬 callback server를 띄운다. webhook은 Developers에 등록하지 않는다.
+- bridge 기동에는 token store(예: `.chzzk-tokens.json`)가 필요하다. 없으면 `auth:login`으로 만든다. non-Docker는 Paper(webhook 포트 29371) 후 bridge이며, `MINECRAFT_WEBHOOK_SECRET`과 플러그인 `webhook.shared-secret`은 동일해야 한다.
+- Naver/CHZZK Developers «로그인 리디렉션 URL»(OAuth `redirectUri`)과 bridge `MINECRAFT_WEBHOOK_URL`(Paper `:29371/chzzk/donations`)은 별개이다. Developers API scope는 실제 후원에 「후원 조회」, 채팅 테스트 `!치지직마크 <금액>`에 「채팅 메시지 조회」가 필요하다. `redirectUri`는 OAuth `code`/`state` 수신용이고, `auth:login`은 기본값 `http://127.0.0.1:8080/chzzk/oauth/callback`의 로컬 callback server를 띄운다. webhook은 Developers에 등록하지 않는다.
 - 30,000원 TNT: target 반경 3블록 안에 TNT 5~7개 즉시 소환, fuse 40 ticks(2초).
 - 50,000원 랜덤 TP: 현재 위치 기준 X/Z 각각 1000블록 이내 지상 위치(최대 32회). 물속·용암 속·땅속·공중 부유 거부.
 - Sidebar: objective·각 score에 Paper `NumberFormat.blank()`로 줄 번호(1~9) 숨김. `/chzzk sidebar donations|deaths on|off`로 tier·사망 섹션 분리(`state.json`의 `sidebarDonationsEnabled`/`sidebarDeathsEnabled`, 기본 on).
 - 전투 몹 풀(`RandomPools.combatMobs()`): `SPIDER` 포함, `EVOKER` 없음. combat spawn(1·3마리) 시 위더 1%는 유지.
 - Windows 네이티브 배포: `C:\chzzk`, `scripts/windows-deploy.ps1`·`windows-start.ps1`. SSH `Start-Process`만 쓰면 세션 종료 시 Java가 같이 내려가 작업 스케줄러 `ChzzkPaper`/`ChzzkBridge`로 분리 기동한다.
-- AWS/EC2 운영: 인터넷 공개는 SSH·Minecraft `25565/tcp`뿐이고 plugin webhook `29371`은 Docker 내부(`http://paper:29371/...`) 전용이며 security group에 열지 않는다. EC2 bridge는 로컬에서 발급한 `CHZZK_REFRESH_TOKEN` 또는 volume `.chzzk-tokens.json` bootstrap을 권장한다(공개 OAuth 콜백 미포함).
+- AWS/EC2 운영: 인터넷 공개는 SSH·Minecraft `25565/tcp`뿐이고 plugin webhook `29371`은 Docker 내부(`http://paper:29371/...`) 전용이며 security group에 열지 않는다. EC2 bridge는 `auth:login`으로 만든 volume `.chzzk-tokens.json` bootstrap을 권장한다.

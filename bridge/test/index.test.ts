@@ -46,34 +46,31 @@ function createTokenStore(token: StoredToken | null) {
 }
 
 describe("loadStoredOrBootstrapToken", () => {
-  test("fails with the existing auth guidance when no token store and no refresh token exist", async () => {
+  test("fails with auth login guidance when no token store exists", async () => {
     const tokenStore = createTokenStore(null);
     const refresh = vi.fn();
 
     await expect(
-      loadStoredOrBootstrapToken(baseConfig, tokenStore, {}, refresh)
-    ).rejects.toThrow("No CHZZK token found. Run npm run build && npm run auth first.");
+      loadStoredOrBootstrapToken(baseConfig, tokenStore, refresh)
+    ).rejects.toThrow(
+      "No CHZZK token found. Run npm run auth:login -- --env-file .env to create a token store from CHZZK_CLIENT_ID and CHZZK_CLIENT_SECRET."
+    );
     expect(refresh).not.toHaveBeenCalled();
     expect(tokenStore.save).not.toHaveBeenCalled();
   });
 
-  test("bootstraps and saves a missing token store from CHZZK_REFRESH_TOKEN", async () => {
-    const tokenStore = createTokenStore(null);
+  test("refreshes and saves an existing token store", async () => {
+    const tokenStore = createTokenStore(storedToken);
     const refresh = vi.fn().mockResolvedValue(refreshedToken);
 
     await expect(
-      loadStoredOrBootstrapToken(
-        baseConfig,
-        tokenStore,
-        { CHZZK_REFRESH_TOKEN: "env-refresh-token" },
-        refresh
-      )
+      loadStoredOrBootstrapToken(baseConfig, tokenStore, refresh)
     ).resolves.toEqual(refreshedToken);
 
     expect(refresh).toHaveBeenCalledWith({
       clientId: "client-id",
       clientSecret: "client-secret",
-      refreshToken: "env-refresh-token",
+      refreshToken: "stored-refresh",
       baseUrl: "https://openapi.test"
     });
     expect(tokenStore.save).toHaveBeenCalledWith(refreshedToken);
@@ -81,37 +78,30 @@ describe("loadStoredOrBootstrapToken", () => {
 });
 
 describe("runBridge", () => {
-  test("starts a live session after bootstrapping a missing token store", async () => {
+  test("fails before starting a live session when token store is missing", async () => {
     const tokenStore = createTokenStore(null);
-    const refresh = vi.fn().mockResolvedValue(refreshedToken);
-    const waitForWebhookReady = vi.fn().mockResolvedValue(undefined);
-    const webhookClient = { sendDonation: vi.fn() };
-    const createWebhookClient = vi.fn().mockReturnValue(webhookClient);
-    const startSession = vi.fn().mockResolvedValue(undefined);
+    const refresh = vi.fn();
+    const waitForWebhookReady = vi.fn();
+    const createWebhookClient = vi.fn();
+    const startSession = vi.fn();
 
-    await runBridge(
-      baseConfig,
-      {
-        tokenStore,
-        refreshAccessToken: refresh,
-        waitForWebhookReady,
-        createWebhookClient,
-        startChzzkDonationSession: startSession
-      },
-      { CHZZK_REFRESH_TOKEN: "env-refresh-token" }
-    );
+    await expect(
+      runBridge(
+        baseConfig,
+        {
+          tokenStore,
+          refreshAccessToken: refresh,
+          waitForWebhookReady,
+          createWebhookClient,
+          startChzzkDonationSession: startSession
+        }
+      )
+    ).rejects.toThrow(/auth:login/);
 
-    expect(tokenStore.save).toHaveBeenCalledWith(refreshedToken);
-    expect(waitForWebhookReady).toHaveBeenCalledWith(baseConfig.minecraftWebhook);
-    expect(createWebhookClient).toHaveBeenCalledWith(baseConfig.minecraftWebhook);
-    expect(startSession).toHaveBeenCalledWith(
-      {
-        accessToken: "refreshed-access",
-        baseUrl: "https://openapi.test",
-        targetChannelId: "target-channel"
-      },
-      webhookClient
-    );
+    expect(refresh).not.toHaveBeenCalled();
+    expect(waitForWebhookReady).not.toHaveBeenCalled();
+    expect(createWebhookClient).not.toHaveBeenCalled();
+    expect(startSession).not.toHaveBeenCalled();
   });
 
   test("starts a live session from an existing token store without env bootstrap", async () => {
@@ -130,8 +120,7 @@ describe("runBridge", () => {
         waitForWebhookReady,
         createWebhookClient,
         startChzzkDonationSession: startSession
-      },
-      { CHZZK_REFRESH_TOKEN: "env-refresh-token" }
+      }
     );
 
     expect(refresh).toHaveBeenCalledWith({
@@ -164,7 +153,7 @@ describe("main", () => {
   test("loads config and wires the production bridge dependencies", async () => {
     vi.resetModules();
 
-    const env = { CHZZK_REFRESH_TOKEN: "env-refresh-token" };
+    const env = {};
     const loadBridgeConfig = vi.fn().mockReturnValue(baseConfig);
     const refreshAccessToken = vi.fn().mockResolvedValue(refreshedToken);
     const tokenStore = createTokenStore(storedToken);

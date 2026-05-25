@@ -58,6 +58,8 @@ validate_config() {
   : "${EC2_ELASTIC_IP_ALLOCATION_ID:=}"
   : "${SSH_CIDR:=}"
   : "${MINECRAFT_CIDR:=0.0.0.0/0}"
+  : "${CHZZK_AUTH_CALLBACK_CIDR:=}"
+  : "${CHZZK_AUTH_CALLBACK_PORT:=8080}"
   : "${ROOT_VOLUME_SIZE_GB:=20}"
   : "${EC2_USER_DATA_FILE:=scripts/aws-ec2-user-data.sh}"
 
@@ -72,6 +74,7 @@ validate_config() {
   case "$(lower "$EC2_ALLOCATE_ELASTIC_IP")" in true|false) EC2_ALLOCATE_ELASTIC_IP=$(lower "$EC2_ALLOCATE_ELASTIC_IP") ;; *) fail "EC2_ALLOCATE_ELASTIC_IP must be true or false" ;; esac
   case "$ROOT_VOLUME_DELETE_ON_TERMINATION" in true|false) ;; *) fail "ROOT_VOLUME_DELETE_ON_TERMINATION must be true or false" ;; esac
   case "$ROOT_VOLUME_SIZE_GB" in ''|*[!0-9]*) fail "ROOT_VOLUME_SIZE_GB must be an integer" ;; esac
+  case "$CHZZK_AUTH_CALLBACK_PORT" in ''|*[!0-9]*) fail "CHZZK_AUTH_CALLBACK_PORT must be an integer" ;; esac
 
   if [ "$SSH_CIDR" = "0.0.0.0/0" ] && ! is_true "$ALLOW_PUBLIC_SSH"; then
     fail "SSH_CIDR=0.0.0.0/0 requires ALLOW_PUBLIC_SSH=true"
@@ -103,6 +106,11 @@ plan() {
   log "Elastic IP: $EC2_ALLOCATE_ELASTIC_IP"
   log "Security group: ${EC2_SECURITY_GROUP_ID:-create-or-reuse $EC2_SECURITY_GROUP_NAME}"
   log "Ingress: SSH 22/tcp from $SSH_CIDR; Minecraft 25565/tcp from $MINECRAFT_CIDR"
+  if [ -n "$CHZZK_AUTH_CALLBACK_CIDR" ]; then
+    log "Ingress: CHZZK OAuth callback ${CHZZK_AUTH_CALLBACK_PORT}/tcp from $CHZZK_AUTH_CALLBACK_CIDR"
+  else
+    log "Ingress: CHZZK OAuth callback disabled"
+  fi
   log "Webhook 29371/tcp is intentionally not opened"
 }
 
@@ -183,6 +191,9 @@ launch_instance() {
 
   authorize_ingress "$security_group_id" 22 "$SSH_CIDR"
   authorize_ingress "$security_group_id" 25565 "$MINECRAFT_CIDR"
+  if [ -n "$CHZZK_AUTH_CALLBACK_CIDR" ]; then
+    authorize_ingress "$security_group_id" "$CHZZK_AUTH_CALLBACK_PORT" "$CHZZK_AUTH_CALLBACK_CIDR"
+  fi
 
   local block_device
   block_device=$(printf '[{"DeviceName":"/dev/xvda","Ebs":{"VolumeType":"gp3","VolumeSize":%s,"DeleteOnTermination":%s}}]' \

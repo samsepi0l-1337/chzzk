@@ -39,6 +39,7 @@ describe("loadBridgeConfig", () => {
       CHZZK_OPENAPI_BASE_URL: "https://example.test",
       CHZZK_CHANNEL_ID: " explicit-channel ",
       CHZZK_REDIRECT_URI: "http://localhost:9090/chzzk/oauth/callback",
+      CHZZK_AUTH_CALLBACK_BIND_HOST: "0.0.0.0",
       CHZZK_TOKEN_STORE: "/tmp/token.json",
       MINECRAFT_WEBHOOK_URL: "http://minecraft.test/hook",
       MINECRAFT_WEBHOOK_HEALTH_URL: "http://minecraft.test/ready",
@@ -51,6 +52,7 @@ describe("loadBridgeConfig", () => {
     expect(config.chzzk.baseUrl).toBe("https://example.test");
     expect(config.chzzk.targetChannelId).toBe("explicit-channel");
     expect(config.oauth.redirectUri).toBe("http://localhost:9090/chzzk/oauth/callback");
+    expect(config.oauth.callbackBindHost).toBe("0.0.0.0");
     expect(config.tokenStorePath).toBe("/tmp/token.json");
     expect(config.minecraftWebhook).toMatchObject({
       url: "http://minecraft.test/hook",

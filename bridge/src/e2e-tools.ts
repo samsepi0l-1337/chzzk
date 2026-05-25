@@ -175,15 +175,11 @@ export async function checkBridgeE2eEnv(
     }
   }
 
-  if (env.CHZZK_REFRESH_TOKEN?.trim()) {
-    present.push("CHZZK_REFRESH_TOKEN");
+  hasTokenStore = await tokenStoreExists(tokenStorePath);
+  if (hasTokenStore) {
+    present.push("token store");
   } else {
-    hasTokenStore = await tokenStoreExists(tokenStorePath);
-    if (hasTokenStore) {
-      present.push("token store");
-    } else {
-      missing.push("CHZZK_REFRESH_TOKEN or token store");
-    }
+    missing.push("token store");
   }
 
   return {

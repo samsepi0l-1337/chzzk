@@ -10,6 +10,7 @@
     "auth": "node dist/auth-cli.js",
     "auth:url": "node dist/auth-url-cli.js",
     "auth:login": "node dist/auth-login-cli.js",
+    "auth:web": "node dist/auth-web-cli.js",
     "e2e:health": "npm run build --silent && node dist/e2e-health-cli.js",
     "e2e:webhook": "npm run build --silent && node dist/e2e-webhook-cli.js",
     "e2e:check-env": "npm run build --silent && node dist/e2e-check-env-cli.js"

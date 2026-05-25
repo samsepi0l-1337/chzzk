@@ -11,20 +11,22 @@
 5. `waitForWebhookReady`가 plugin webhook health endpoint가 열릴 때까지 대기한다.
 6. `createUserSessionUrl`이 CHZZK session auth URL을 받아온다.
 7. `socket.io-client@2.0.3`으로 Session socket에 연결한다.
-8. `SYSTEM connected` 메시지에서 `sessionKey`를 읽고 donation event를 subscribe한다.
-9. `DONATION.channelId`가 `CHZZK_CHANNEL_ID`와 일치하는지 확인한다.
-10. 일치하는 `DONATION` 이벤트만 `normalizeDonation`으로 Minecraft payload로 변환한다.
-11. `MinecraftWebhookClient.send`가 JSON body를 HMAC-SHA256으로 서명해 plugin webhook에 POST한다.
-12. `DonationWebhookServer`가 HTTP method, body size, HMAC signature, JSON payload를 검증한다.
-13. `DonationService.handle`이 중복 event ID, 후원 금액 티어, 대상 플레이어 상태를 검증한다.
-14. `DonationEffectExecutor`가 Paper 메인 스레드에서 효과를 실행한다.
-15. 최근 event ID를 `state.json`에 저장하고 결과를 JSON으로 반환한다.
+8. `SYSTEM connected` 메시지에서 `sessionKey`를 읽고 donation/chat event를 subscribe한다.
+9. `DONATION.channelId` 또는 `CHAT.channelId`가 `CHZZK_CHANNEL_ID`와 일치하는지 확인한다.
+10. 일치하는 `DONATION` 이벤트는 `normalizeDonation`으로 Minecraft payload로 변환한다.
+11. 일치하는 `CHAT` 이벤트 중 내용이 `!치지직마크 <금액>`이면 채팅 테스트 payload로 변환한다.
+12. `MinecraftWebhookClient.send`가 JSON body를 HMAC-SHA256으로 서명해 plugin webhook에 POST한다.
+13. `DonationWebhookServer`가 HTTP method, body size, HMAC signature, JSON payload를 검증한다.
+14. `DonationService.handle`이 중복 event ID, 후원 금액 티어, 대상 플레이어 상태를 검증한다.
+15. `DonationEffectExecutor`가 Paper 메인 스레드에서 효과를 실행한다.
+16. 최근 event ID를 `state.json`에 저장하고 결과를 JSON으로 반환한다.
 
 CHZZK Session 구독은 OAuth 토큰 기준으로 열리며, 특정 스트리머 제한은 bridge가 수신 payload의 `channelId`를 `CHZZK_CHANNEL_ID`와 정확히 비교해 적용한다. `channelId`가 누락되거나 다르면 Minecraft webhook은 호출하지 않는다.
 
 ## CHZZK API 경계
 
 공식 CHZZK 문서 기준 후원 데이터는 Session API의 실시간 `DONATION` 이벤트로 전달된다. 확인된 REST endpoint는 session 생성, session 목록 조회, 이벤트 구독/취소이며, 과거 후원 내역을 fetch하는 REST endpoint는 문서상 제공되지 않는다.
+채팅 테스트는 공식 Session `CHAT` 구독으로 들어온 실시간 채팅만 처리한다. OAuth token에는 `후원 조회`와 `채팅 메시지 조회` scope가 모두 필요하다.
 
 따라서 이 프로젝트는 live session이 연결된 뒤 수신한 후원만 처리한다. bridge가 꺼져 있거나 session이 끊긴 동안 발생한 과거 후원은 자동 보정하지 못한다.
 
@@ -50,6 +52,7 @@ CHZZK Session 구독은 OAuth 토큰 기준으로 열리며, 특정 스트리머
 - header: `X-Chzzk-Signature: sha256=<hex>` 형식이어야 한다.
 
 공식 `DONATION` payload에는 안정적인 event id 필드가 문서화되어 있지 않다. 현재 bridge는 `normalizeDonation`에서 `randomUUID()`로 webhook용 `eventId`를 생성한다. 이 값은 같은 webhook payload가 재전송될 때만 중복 차단에 유효하며, CHZZK upstream이 동일한 후원 이벤트를 새 socket 메시지로 다시 보내면 bridge가 새 UUID를 만들기 때문에 plugin은 중복으로 판단할 수 없다.
+채팅 테스트 payload는 `eventId`를 `chat-test-<uuid>`로 생성하고, `message`에는 원문 명령을 `chat command: ...` 형식으로 보낸다. 일반 채팅과 malformed command는 webhook으로 보내지 않는다.
 payload 세부 계약은 [webhook-protocol.md](../bridge/webhook-protocol.md)를 따른다.
 
 ## 상태 코드 의미

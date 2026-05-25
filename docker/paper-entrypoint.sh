@@ -18,6 +18,12 @@ cp "$plugin_jar" "$server_dir/plugins/chzzk-donation.jar"
 printf 'eula=true\n' > "$server_dir/eula.txt"
 secret_file="$(mktemp)"
 printf '%s' "$MINECRAFT_WEBHOOK_SECRET" > "$secret_file"
+auth_url="${CHZZK_AUTH_URL:-}"
+if [ -z "$auth_url" ] && [ -n "${CHZZK_REDIRECT_URI:-}" ] && [ -n "${CHZZK_AUTH_PAGE_SECRET:-}" ]; then
+  auth_url="${CHZZK_REDIRECT_URI%/chzzk/oauth/callback}/chzzk/oauth/login?secret=${CHZZK_AUTH_PAGE_SECRET}"
+fi
+auth_url_file="$(mktemp)"
+printf '%s' "$auth_url" > "$auth_url_file"
 
 cat > "$server_dir/plugins/ChzzkDonation/config.yml" <<EOF
 webhook:
@@ -28,7 +34,10 @@ webhook:
 $(sed 's/^/    /' "$secret_file")
 sidebar:
   enabled: true
+auth:
+  url: |-
+$(sed 's/^/    /' "$auth_url_file")
 EOF
-rm -f "$secret_file"
+rm -f "$secret_file" "$auth_url_file"
 
 exec "$@"

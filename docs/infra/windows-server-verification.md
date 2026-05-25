@@ -71,7 +71,12 @@ CHZZK_CLIENT_ID=your-client-id
 CHZZK_CLIENT_SECRET=your-client-secret
 CHZZK_CHANNEL_ID=target-streamer-channel-id
 MINECRAFT_WEBHOOK_SECRET=replace-with-shared-secret
-CHZZK_REFRESH_TOKEN=your-refresh-token
+```
+
+처음 실행 전에 token store를 만든다.
+
+```powershell
+npm run auth:login -- --env-file .env
 ```
 
 처음 실행한다.
@@ -80,7 +85,7 @@ CHZZK_REFRESH_TOKEN=your-refresh-token
 docker compose -f docker-compose.yml up --build
 ```
 
-첫 실행 후 `bridge-data` volume에 token store가 생성되면 운영 `.env`에서 `CHZZK_REFRESH_TOKEN`을 제거할 수 있다. 이후에는 같은 명령으로 재시작한다.
+이후에는 같은 명령으로 재시작한다.
 
 ### 3. Docker 없이 Windows에서 실행
 
@@ -113,7 +118,6 @@ $env:CHZZK_CLIENT_SECRET = "your-client-secret"
 $env:CHZZK_CHANNEL_ID = "target-streamer-channel-id"
 $env:MINECRAFT_WEBHOOK_SECRET = "same-as-plugin-config-yml"
 $env:CHZZK_TOKEN_STORE = "C:\path\to\chzzk\bridge\.chzzk-tokens.json"
-$env:CHZZK_REFRESH_TOKEN = "your-refresh-token"
 
 npm install
 npm run build
@@ -180,12 +184,11 @@ EULA=true \
 CHZZK_CLIENT_ID=dummy \
 CHZZK_CLIENT_SECRET=dummy \
 CHZZK_CHANNEL_ID=dummy \
-CHZZK_REFRESH_TOKEN= \
 MINECRAFT_WEBHOOK_SECRET=test-secret \
 docker compose -f docker-compose.yml config
 ```
 
-이 명령은 루트 `.env`도 읽을 수 있다. 실제 secret이 로그에 남지 않게 검증용 shell에서는 placeholder 환경 변수를 먼저 지정하고 `CHZZK_REFRESH_TOKEN`은 빈 값으로 덮어쓴다.
+이 명령은 루트 `.env`도 읽을 수 있다. 실제 secret이 로그에 남지 않게 검증용 shell에서는 placeholder 환경 변수를 먼저 지정한다.
 
 ## Windows Docker 검증
 
@@ -259,7 +262,7 @@ Docker 없이 실행할 때는 [windows-local-run.md](windows-local-run.md)를 �
 CHZZK credential과 token store가 준비된 경우에만 실행한다.
 
 1. `CHZZK_CLIENT_ID`, `CHZZK_CLIENT_SECRET`, `CHZZK_CHANNEL_ID`, `MINECRAFT_WEBHOOK_SECRET`을 설정한다.
-2. token store가 없으면 `CHZZK_REFRESH_TOKEN`을 한 번만 사용해 bootstrap한다.
+2. token store가 없으면 `npm run auth:login -- --env-file .env`로 bootstrap한다.
 3. Paper 또는 Docker Paper가 healthy인지 확인한다.
 4. bridge를 시작한다.
 5. Minecraft에서 `/chzzk target set <플레이어>`를 실행한다.
@@ -283,4 +286,4 @@ CHZZK credential과 token store가 준비된 경우에만 실행한다.
 | Docker에서 Minecraft 접속 실패 | `25565` publish, Windows 방화벽, 접속 IP 문제               | [docker-deployment.md](docker-deployment.md)                     |
 | CHZZK 이벤트가 무시됨          | `DONATION.channelId`와 `CHZZK_CHANNEL_ID` 불일치            | [chzzk-auth-and-session.md](../bridge/chzzk-auth-and-session.md) |
 
-루트 `auth:*` npm script는 Windows 서버 검증의 필수 경로가 아니다. token bootstrap은 `bridge` 폴더에서 `npm run auth -- --refresh-token "<refresh-token>"`를 사용한다.
+token bootstrap은 루트에서 `npm run auth:login -- --env-file .env`를 사용한다.

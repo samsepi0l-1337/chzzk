@@ -61,7 +61,7 @@ java -jar paper.jar --nogui
 
 ## 4. CHZZK 토큰 (선택 경로)
 
-- **refresh token만으로 bootstrap**: `bridge`에서 `npm run build` 후 `npm run auth` ([chzzk-auth-and-session.md](../bridge/chzzk-auth-and-session.md)).
+- **권장 OAuth login**: 루트에서 `npm run auth:login -- --env-file .env`를 실행해 token store를 만든다 ([chzzk-auth-and-session.md](../bridge/chzzk-auth-and-session.md)).
 - **authorization code**: `code`와 `state`를 이미 확보한 경우 `npm run auth -- --code "<code>" --state "<state>"`로 token store를 저장할 수 있다.
 
 ## 5. bridge 환경 변수
@@ -96,9 +96,6 @@ $env:CHZZK_CHANNEL_ID = "target-streamer-channel-id"
 $env:MINECRAFT_WEBHOOK_SECRET = "same-as-plugin-config-yml"
 $env:CHZZK_TOKEN_STORE = "C:\path\to\chzzk\bridge\.chzzk-tokens.json"
 
-# token store가 없을 때 첫 갱신용 (선택)
-$env:CHZZK_REFRESH_TOKEN = "your-refresh-token"
-
 npm install
 npm run build
 npm run start
@@ -122,11 +119,8 @@ npm run start
 ### auth CLI만 실행할 때 (webhook secret 불필요)
 
 ```bat
-cd C:\path\to\chzzk\bridge
-set CHZZK_CLIENT_ID=...
-set CHZZK_CLIENT_SECRET=...
-npm run build
-npm run auth -- --refresh-token "paste-refresh-token-here"
+cd C:\path\to\chzzk
+npm run auth:login -- --env-file .env
 ```
 
 ## 6. 기동 순서
@@ -232,7 +226,7 @@ Windows에서 실제 서버를 열었다는 검증은 빌드 성공만으로 끝
 | 증상               | 확인                                                                                     |
 | ------------------ | ---------------------------------------------------------------------------------------- |
 | Gradle 실행 안 됨  | Git Bash에서 `./gradlew shadowJar` 또는 시스템 `gradle` 사용                             |
-| bridge가 바로 종료 | `CHZZK_CLIENT_ID` / `CHZZK_CLIENT_SECRET` / `CHZZK_CHANNEL_ID` / token store 또는 `CHZZK_REFRESH_TOKEN` |
+| bridge가 바로 종료 | `CHZZK_CLIENT_ID` / `CHZZK_CLIENT_SECRET` / `CHZZK_CHANNEL_ID` / token store |
 | webhook 준비 실패  | Paper 기동 여부, 방화벽, `config.yml`의 `webhook.port`, bridge의 `MINECRAFT_WEBHOOK_URL` |
 | signature 오류     | `MINECRAFT_WEBHOOK_SECRET`과 `config.yml`의 `shared-secret` 일치 여부                    |
 

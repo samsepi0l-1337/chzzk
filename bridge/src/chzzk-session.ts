@@ -1,4 +1,5 @@
 import io, { type Socket } from "socket.io-client";
+import { normalizeChatDonationCommand, type ChzzkChatEvent } from "./chat-command";
 import { normalizeDonation, type ChzzkDonationEvent } from "./donation-parser";
 import { CHZZK_OPENAPI_BASE_URL } from "./config";
 import type { MinecraftWebhookClient } from "./webhook-client";
@@ -75,6 +76,26 @@ export async function subscribeDonationEvent(
   }
 }
 
+export async function subscribeChatEvent(
+  config: ChzzkSessionConfig,
+  sessionKey: string,
+  fetcher: Fetcher = fetch
+): Promise<void> {
+  const url = new URL(`${config.baseUrl ?? CHZZK_OPENAPI_BASE_URL}/open/v1/sessions/events/subscribe/chat`);
+  url.searchParams.set("sessionKey", sessionKey);
+
+  const response = await fetcher(url.toString(), {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${config.accessToken}`
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`CHZZK chat subscribe failed: ${response.status} ${await response.text()}`);
+  }
+}
+
 export async function startChzzkDonationSession(
   config: ChzzkSessionConfig,
   webhookClient: MinecraftWebhookClient,
@@ -100,6 +121,11 @@ export async function startChzzkDonationSession(
       handleDonationMessage(config, message, webhookClient, logger)
     );
   });
+  socket.on("CHAT", (message) => {
+    void logFailure(logger, "CHZZK CHAT command delivery failed", () =>
+      handleChatMessage(config, message, webhookClient, logger)
+    );
+  });
   socket.on("message", (message) => {
     void logFailure(logger, "CHZZK typed message handling failed", () =>
       handleTypedMessage(config, message, webhookClient, fetcher, logger)
@@ -123,6 +149,7 @@ async function handleSystemMessage(
   const system = message as ChzzkSystemMessage;
   if (system.type === "connected" && system.data?.sessionKey) {
     await subscribeDonationEvent(config, system.data.sessionKey, fetcher);
+    await subscribeChatEvent(config, system.data.sessionKey, fetcher);
   }
 }
 
@@ -140,6 +167,10 @@ async function handleTypedMessage(
   }
   if (typed.eventType === "DONATION" || typed.type === "DONATION") {
     await handleDonationMessage(config, typed.data ?? message, webhookClient, logger);
+    return;
+  }
+  if (typed.eventType === "CHAT" || typed.type === "CHAT") {
+    await handleChatMessage(config, typed.data ?? message, webhookClient, logger);
   }
 }
 
@@ -158,6 +189,28 @@ async function handleDonationMessage(
     return;
   }
   await webhookClient.send(normalizeDonation(donation));
+}
+
+async function handleChatMessage(
+  config: ChzzkSessionConfig,
+  message: unknown,
+  webhookClient: MinecraftWebhookClient,
+  logger: Pick<Console, "info">
+): Promise<void> {
+  const chat = message as ChzzkChatEvent;
+  if (config.targetChannelId && chat.channelId !== config.targetChannelId) {
+    logger.info("Ignored CHZZK chat from non-target channel", {
+      channelId: chat.channelId ?? null,
+      targetChannelId: config.targetChannelId
+    });
+    return;
+  }
+
+  const payload = normalizeChatDonationCommand(chat);
+  if (payload === null) {
+    return;
+  }
+  await webhookClient.send(payload);
 }
 
 async function logFailure(

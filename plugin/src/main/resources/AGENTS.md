@@ -14,6 +14,7 @@
 
 - If AWS/Docker secret needs changing, do not edit this packaged config; edit root `.env` and redeploy.
 - If command metadata is missing, do not hide command code; update `plugin.yml` and command docs together.
+- If `/chzzk` needs a public subcommand, do not set root command `permission` in `plugin.yml`; let command code guard admin-only subcommands.
 
 ## Failure Counteraction Rule
 

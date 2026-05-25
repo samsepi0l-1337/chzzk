@@ -1,4 +1,4 @@
-import { exchangeAuthorizationCode, refreshAccessToken } from "./chzzk-auth";
+import { exchangeAuthorizationCode } from "./chzzk-auth";
 import { loadBridgeAuthConfig } from "./config";
 import { TokenStore } from "./token-store";
 
@@ -7,23 +7,8 @@ async function main(): Promise<void> {
   const store = new TokenStore(config.tokenStorePath);
   const code = readArg("--code") ?? process.env.CHZZK_AUTH_CODE;
   const state = readArg("--state") ?? process.env.CHZZK_AUTH_STATE;
-  const refreshToken =
-    readArg("--refresh-token") ?? process.env.CHZZK_REFRESH_TOKEN;
-
-  if (refreshToken) {
-    await store.save(
-      await refreshAccessToken({
-        clientId: config.chzzk.clientId,
-        clientSecret: config.chzzk.clientSecret,
-        refreshToken,
-        baseUrl: config.chzzk.baseUrl,
-      }),
-    );
-    return;
-  }
-
   if (!code || !state) {
-    throw new Error("Provide --code/--state or CHZZK_REFRESH_TOKEN.");
+    throw new Error("Provide --code/--state, or run npm run auth:login -- --env-file .env.");
   }
 
   await store.save(

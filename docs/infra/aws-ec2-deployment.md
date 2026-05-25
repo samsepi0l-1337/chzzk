@@ -9,9 +9,9 @@
 - Paper/Minecraft는 1.21.1, Java는 21이다.
 - EC2는 `t4g.xlarge`와 Amazon Linux 2023 arm64 AMI를 기본값으로 쓴다.
 - Elastic IP를 기본 생성/연결한다. Minecraft 접속 주소는 provision 출력의 `<Elastic IP>:25565`다.
-- AWS security group은 SSH 관리 포트와 Minecraft `25565/tcp`만 연다.
+- AWS security group은 SSH 관리 포트와 Minecraft `25565/tcp`만 기본으로 연다. EC2에서 OAuth를 직접 진행할 때만 callback `8080/tcp`를 관리자 IP에 제한해 연다.
 - plugin webhook `29371/tcp`는 EC2 host의 loopback(`127.0.0.1`) 전용이다. security group에 열지 않는다.
-- bridge 기동에는 token store 또는 `CHZZK_REFRESH_TOKEN`이 필요하다.
+- bridge 기동에는 OAuth login으로 생성한 token store가 필요하다.
 - 후원 효과 target은 서버 접속 후 `/chzzk target set <player>`로 지정한다.
 
 ## Short Event Plan
@@ -45,6 +45,8 @@ SSH_CIDR=your-public-ip/32
 - `EC2_INSTANCE_TYPE=t4g.xlarge`
 - `EC2_AMI_ID=resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-arm64`
 - `MINECRAFT_CIDR=0.0.0.0/0`
+- `CHZZK_AUTH_CALLBACK_CIDR=` (EC2에서 OAuth login을 직접 받을 때만 `your-public-ip/32`)
+- `CHZZK_AUTH_CALLBACK_PORT=8080`
 - `ROOT_VOLUME_SIZE_GB=20`
 - `EC2_ALLOCATE_ELASTIC_IP=true`
 - `AWS_EC2_APPLY=false`
@@ -65,7 +67,7 @@ EC2 생성:
 npm run aws:ec2:provision
 ```
 
-`scripts/aws-ec2-provision.sh`는 Amazon Linux 2023 SSM parameter, gp3 root volume, IMDSv2 required metadata option을 사용한다. Security group에는 `22/tcp`, `25565/tcp`만 추가하고 `29371/tcp`는 추가하지 않는다. 기본값으로 Elastic IP를 새로 할당하고 인스턴스에 연결한다. 이미 만든 Elastic IP를 재사용하려면 `EC2_ELASTIC_IP_ALLOCATION_ID=eipalloc-...`를 넣는다.
+`scripts/aws-ec2-provision.sh`는 Amazon Linux 2023 SSM parameter, gp3 root volume, IMDSv2 required metadata option을 사용한다. Security group에는 `22/tcp`, `25565/tcp`를 추가하고 `29371/tcp`는 추가하지 않는다. `CHZZK_AUTH_CALLBACK_CIDR`가 설정된 경우에만 `CHZZK_AUTH_CALLBACK_PORT`도 추가한다. 기본값으로 Elastic IP를 새로 할당하고 인스턴스에 연결한다. 이미 만든 Elastic IP를 재사용하려면 `EC2_ELASTIC_IP_ALLOCATION_ID=eipalloc-...`를 넣는다.
 Launch user data는 `scripts/aws-ec2-user-data.sh`를 사용하며, Java/Node/tmux/screen 설치까지만 처리하고 앱 secret은 포함하지 않는다.
 
 생성 성공 후 출력되는 `Minecraft address: <Elastic IP>:25565`가 플레이어 접속 주소다.
@@ -76,6 +78,7 @@ Launch user data는 `scripts/aws-ec2-user-data.sh`를 사용하며, Java/Node/tm
 | --- | --- | --- |
 | `22/tcp` | 관리자 IP 또는 EC2 Instance Connect 대역만 | SSH 접속 |
 | `25565/tcp` | Minecraft 접속자 대역. 공개 서버면 `0.0.0.0/0` | Minecraft Java 서버 |
+| `8080/tcp` | EC2에서 OAuth login을 직접 진행할 때만 관리자 IP | CHZZK OAuth callback |
 | `29371/tcp` | EC2 host loopback `127.0.0.1` only | bridge -> plugin webhook |
 
 native AWS 배포에서는 Paper plugin config의 `webhook.host`를 `127.0.0.1`로 쓴다. bridge도 같은 host에서 `http://127.0.0.1:29371/chzzk/donations`로 호출한다.
@@ -119,11 +122,69 @@ CHZZK_CHANNEL_ID=target-streamer-channel-id
 MINECRAFT_WEBHOOK_SECRET=replace-with-a-long-random-secret
 ```
 
-첫 token store가 없으면 `CHZZK_REFRESH_TOKEN`도 넣는다. bridge가 token store를 만든 뒤에는 운영 `.env`에서 refresh token을 제거한다.
+첫 token store가 없으면 refresh token을 `.env`에 직접 넣지 말고 OAuth login으로 token store를 만든다. CHZZK Developers callback URI에는 `.env`의 `CHZZK_REDIRECT_URI`와 같은 값을 등록한다.
+
+기본 callback URI:
+
+```text
+http://127.0.0.1:8080/chzzk/oauth/callback
+```
+
+로컬에서 token store 생성:
+
+```bash
+npm run auth:login -- --env-file .env
+```
+
+AWS native runtime으로 복사:
+
+```bash
+scp -i ~/.ssh/<key.pem> bridge/.chzzk-tokens.json ec2-user@<ec2-host>:~/chzzk-runtime/bridge/.chzzk-tokens.json
+ssh -i ~/.ssh/<key.pem> ec2-user@<ec2-host> 'chmod 600 ~/chzzk-runtime/bridge/.chzzk-tokens.json'
+```
+
+EC2에서 직접 token store 생성:
+
+1. `config/aws-ec2.env`에 callback 포트를 관리자 IP로만 연다.
 
 ```dotenv
-CHZZK_REFRESH_TOKEN=your-refresh-token
+CHZZK_AUTH_CALLBACK_CIDR=your-public-ip/32
+CHZZK_AUTH_CALLBACK_PORT=8080
 ```
+
+2. EC2의 `.env`에는 public 주소 기준 callback URI와 bind host를 넣는다. 이 URI를 CHZZK Developers의 로그인 리디렉션 URL에 그대로 등록한다.
+
+```dotenv
+CHZZK_REDIRECT_URI=http://<Elastic-IP-or-public-DNS>:8080/chzzk/oauth/callback
+CHZZK_AUTH_CALLBACK_BIND_HOST=0.0.0.0
+```
+
+3. EC2에서 auth helper를 실행하고 출력된 CHZZK 로그인 URL을 브라우저에서 연다.
+
+```bash
+npm run aws:ec2:auth
+```
+
+이 명령은 `scripts/aws-ec2-auth-login.sh`를 실행한다. `bridge` 의존성 설치와 build를 먼저 수행한 뒤 token store를 `$HOME/chzzk-runtime/bridge/.chzzk-tokens.json`에 저장한다. 로그인 후 callback server는 종료되며, 이벤트 운영 중 공개로 필요한 포트는 SSH와 Minecraft뿐이다.
+
+대상 스트리머가 직접 웹 페이지에서 OAuth token store를 만들게 하려면 EC2 `.env`에 임의의 페이지 secret을 추가하고 bridge auth web 서버를 실행한다.
+
+```dotenv
+CHZZK_AUTH_PAGE_SECRET=<random-page-secret>
+```
+
+```bash
+npm run auth:web
+```
+
+스트리머에게 전달할 URL:
+
+```text
+http://<Elastic-IP-or-public-DNS>:8080/chzzk/oauth/login?secret=<random-page-secret>
+```
+
+이 페이지는 secret이 맞을 때만 CHZZK 로그인 링크를 표시한다. CHZZK Developers의 로그인 리디렉션 URL은 계속 `CHZZK_REDIRECT_URI`와 같은 `http://<Elastic-IP-or-public-DNS>:8080/chzzk/oauth/callback`이어야 한다.
+`npm run aws:ec2:deploy`는 `CHZZK_AUTH_URL`이 있으면 그 값을, 없으면 `CHZZK_REDIRECT_URI`와 `CHZZK_AUTH_PAGE_SECRET`에서 생성한 URL을 Paper plugin config `auth.url`에 기록한다. Minecraft 안에서는 OP가 아니어도 `/chzzk auth`로 같은 URL을 확인할 수 있다.
 
 실행:
 

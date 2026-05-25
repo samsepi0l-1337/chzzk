@@ -7,7 +7,8 @@ import type { BridgeConfig } from "./config";
 import type { ChzzkRefreshConfig } from "./chzzk-auth";
 import type { StoredToken } from "./token-store";
 
-const missingTokenMessage = "No CHZZK token found. Run npm run build && npm run auth first.";
+const missingTokenMessage =
+  "No CHZZK token found. Run npm run auth:login -- --env-file .env to create a token store from CHZZK_CLIENT_ID and CHZZK_CLIENT_SECRET.";
 
 type RefreshToken = (config: ChzzkRefreshConfig) => Promise<StoredToken>;
 type WebhookClient = Parameters<typeof startChzzkDonationSession>[1];
@@ -28,19 +29,17 @@ interface BridgeDependencies {
 export async function loadStoredOrBootstrapToken(
   config: BridgeConfig,
   tokenStore: TokenStorePort,
-  env: NodeJS.ProcessEnv = process.env,
   refreshToken: RefreshToken = refreshAccessToken
 ): Promise<StoredToken> {
   const storedToken = await tokenStore.load();
-  const refreshTokenValue = storedToken?.refreshToken ?? env.CHZZK_REFRESH_TOKEN?.trim();
-  if (!refreshTokenValue) {
+  if (!storedToken?.refreshToken) {
     throw new Error(missingTokenMessage);
   }
 
   const token = await refreshToken({
     clientId: config.chzzk.clientId,
     clientSecret: config.chzzk.clientSecret,
-    refreshToken: refreshTokenValue,
+    refreshToken: storedToken.refreshToken,
     baseUrl: config.chzzk.baseUrl
   });
   await tokenStore.save(token);
@@ -49,13 +48,11 @@ export async function loadStoredOrBootstrapToken(
 
 export async function runBridge(
   config: BridgeConfig,
-  dependencies: BridgeDependencies,
-  env: NodeJS.ProcessEnv = process.env
+  dependencies: BridgeDependencies
 ): Promise<void> {
   const token = await loadStoredOrBootstrapToken(
     config,
     dependencies.tokenStore,
-    env,
     dependencies.refreshAccessToken
   );
 
@@ -81,8 +78,7 @@ export async function main(env: NodeJS.ProcessEnv = process.env): Promise<void> 
       waitForWebhookReady,
       createWebhookClient: (webhookConfig) => new MinecraftWebhookClient(webhookConfig),
       startChzzkDonationSession
-    },
-    env
+    }
   );
 }
 

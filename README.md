@@ -1,6 +1,6 @@
 # CHZZK Donation Minecraft
 
-CHZZK Session 실시간 `DONATION` 이벤트를 Minecraft Paper 서버의 게임 효과로 변환하는 프로젝트입니다. 런타임은 CHZZK OpenAPI/Session을 담당하는 Node.js `bridge`와, Paper 서버 안에서 webhook을 받아 효과를 실행하는 Java `plugin`으로 나뉩니다. 공식 문서에서 과거 후원 내역 REST endpoint는 확인되지 않아 backfill은 지원하지 않습니다.
+CHZZK Session 실시간 `DONATION` 이벤트를 Minecraft Paper 서버의 게임 효과로 변환하는 프로젝트입니다. CHZZK 채팅에서 `!치지직마크 <금액>`을 입력하면 같은 webhook 경로로 후원 효과를 테스트할 수 있습니다. 런타임은 CHZZK OpenAPI/Session을 담당하는 Node.js `bridge`와, Paper 서버 안에서 webhook을 받아 효과를 실행하는 Java `plugin`으로 나뉩니다. 공식 문서에서 과거 후원 내역 REST endpoint는 확인되지 않아 backfill은 지원하지 않습니다.
 
 ## 아키텍처
 
@@ -14,7 +14,7 @@ CHZZK OpenAPI / Session
 
 | 영역                            | 책임                                                                                 | 대표 경로                            |
 | ------------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------ |
-| `bridge/`                       | CHZZK token 갱신, Session Socket.IO 연결, donation payload 정규화, HMAC webhook 전송 | `bridge/src`, `bridge/test`          |
+| `bridge/`                       | CHZZK token 갱신, Session Socket.IO 연결, donation/chat-test payload 정규화, HMAC webhook 전송 | `bridge/src`, `bridge/test`          |
 | `plugin/`                       | webhook 수신, HMAC 검증, 중복 차단, Paper 메인 스레드 효과 실행, 상태 저장           | `plugin/src/main`, `plugin/src/test` |
 | `docker/`, `docker-compose.yml` | Paper + bridge 이미지 빌드, 내부 네트워크, volume, healthcheck                       | `docker/`, `docker-compose.yml`      |
 | `docs/`                         | 서비스 경계, 이벤트 흐름, 환경 변수, 테스트/운영 runbook                             | `docs/README.md`                     |
@@ -48,17 +48,20 @@ CHZZK_CHANNEL_ID=target-streamer-channel-id
 MINECRAFT_WEBHOOK_SECRET=replace-with-a-secret
 ```
 
-첫 실행에서 token store가 없으면 `.env`에 `CHZZK_REFRESH_TOKEN`을 넣고 바로 실행할 수 있습니다.
+첫 실행 전에 CHZZK OAuth login으로 token store를 생성합니다. 이 과정에서 `CHZZK_CLIENT_ID`와 `CHZZK_CLIENT_SECRET`을 사용해 access token과 refresh token을 받아 저장합니다. refresh token을 사용자가 `.env`에 직접 넣는 방식은 권장하지 않습니다.
 
 ```bash
+npm run auth:login
 docker compose -f docker-compose.yml up --build
 ```
 
-token을 `.env`에 오래 두지 않으려면 먼저 `bridge-data` volume에 token store를 생성합니다.
+CHZZK Developers callback URI에는 `.env`의 `CHZZK_REDIRECT_URI`와 같은 값을 등록해야 합니다.
+OAuth scope는 `후원 조회`와 `채팅 메시지 조회`가 필요합니다. `채팅 메시지 조회`가 없으면 실제 후원은 계속 처리되지만 `!치지직마크 <금액>` 채팅 테스트 구독은 실패합니다.
 
-```bash
-docker compose -f docker-compose.yml run --rm bridge npm run auth -- --refresh-token "$CHZZK_REFRESH_TOKEN"
-docker compose -f docker-compose.yml up --build
+기본값:
+
+```text
+http://127.0.0.1:8080/chzzk/oauth/callback
 ```
 
 Docker compose는 `paper` healthcheck가 성공한 뒤 `bridge`를 시작합니다. bridge도 `waitForWebhookReady`로 plugin webhook readiness를 다시 확인한 다음 CHZZK live session을 엽니다. Docker 없이 실행할 때도 Paper webhook 준비 후 bridge를 시작합니다.
@@ -72,8 +75,8 @@ Docker compose는 `paper` healthcheck가 성공한 뒤 `bridge`를 시작합니�
 | `EULA`                         | 예                      | Minecraft EULA 수락 여부. `true` 또는 `TRUE`일 때만 서버가 계속 시작됩니다. |
 | `CHZZK_CLIENT_ID`              | 예                      | CHZZK OpenAPI client id                                                     |
 | `CHZZK_CLIENT_SECRET`          | 예                      | CHZZK OpenAPI client secret                                                 |
-| `CHZZK_CHANNEL_ID`             | 예                      | 수신 `DONATION.channelId` 검증에 쓰는 대상 스트리머 채널 ID                 |
-| `CHZZK_REFRESH_TOKEN`          | token store가 없으면 예 | 첫 live session에서 `/data/.chzzk-tokens.json` 생성에 사용                  |
+| `CHZZK_CHANNEL_ID`             | 예                      | 수신 `DONATION`/`CHAT` `channelId` 검증에 쓰는 대상 스트리머 채널 ID        |
+| `CHZZK_REDIRECT_URI`           | 아니오                  | OAuth callback URI. CHZZK Developers에 같은 값을 등록해야 함                |
 | `CHZZK_OPENAPI_BASE_URL`       | 아니오                  | 기본값 `https://openapi.chzzk.naver.com`                                    |
 | `MINECRAFT_WEBHOOK_SECRET`     | 예                      | bridge HMAC 서명과 plugin 검증에 쓰는 공유 secret                           |
 | `WEBHOOK_MAX_ATTEMPTS`         | 아니오                  | webhook 전송 최대 재시도 횟수                                               |
@@ -134,6 +137,7 @@ git diff --check
 
 - host에 publish되는 포트는 Minecraft `25565`뿐입니다.
 - session 연결 이후의 실시간 `DONATION` 이벤트만 처리합니다. 과거 후원 backfill은 없습니다.
+- CHZZK 채팅 테스트는 `CHAT.channelId`가 `CHZZK_CHANNEL_ID`와 일치하고 내용이 `!치지직마크 <금액>`일 때만 기존 donation webhook으로 전달합니다.
 - plugin webhook `29371`은 Docker network 내부 전용입니다.
 - AWS EC2 배포에서도 security group에 `29371`을 열지 않습니다. 외부 공개는 SSH 관리 포트와 Minecraft `25565`만 사용합니다.
 - bridge는 `http://paper:29371/chzzk/donations`로만 donation payload를 보냅니다.
@@ -180,6 +184,6 @@ Socket.IO와 CHZZK Session 세부 계약은 `docs/bridge/chzzk-auth-and-session.
 | Windows에서 bridge env가 안 먹음      | 루트 `.env`만으로는 부족함. `docs/infra/windows-local-run.md`, `docs/infra/env-reference.md` |
 | signature/payload 오류                | `MINECRAFT_WEBHOOK_SECRET`, `docs/bridge/webhook-protocol.md`                                |
 | 후원 효과가 실행되지 않음             | `/chzzk target set <player>`, `docs/plugin/effects-and-donation.md`                          |
-| token store 오류                      | `bridge-data` volume, `CHZZK_REFRESH_TOKEN`, `docs/bridge/chzzk-auth-and-session.md`         |
+| token store 오류                      | `npm run auth:login`, token store 파일, `docs/bridge/chzzk-auth-and-session.md`              |
 
 라이브 검증은 credential과 Minecraft runtime이 필요하므로 자동 검증에 포함하지 않습니다. 수동 smoke test는 `docs/testing/coverage-and-runbook.md`의 절차를 따릅니다.

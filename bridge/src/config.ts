@@ -12,6 +12,7 @@ export interface BridgeAuthConfig {
   chzzk: ChzzkAuthConfig;
   oauth: {
     redirectUri: string;
+    callbackBindHost?: string;
   };
   tokenStorePath: string;
 }
@@ -32,15 +33,20 @@ export interface BridgeConfig extends BridgeAuthConfig {
 }
 
 export function loadBridgeAuthConfig(env: NodeJS.ProcessEnv = process.env): BridgeAuthConfig {
+  const oauth: BridgeAuthConfig["oauth"] = {
+    redirectUri: env.CHZZK_REDIRECT_URI ?? "http://127.0.0.1:8080/chzzk/oauth/callback"
+  };
+  if (env.CHZZK_AUTH_CALLBACK_BIND_HOST) {
+    oauth.callbackBindHost = env.CHZZK_AUTH_CALLBACK_BIND_HOST;
+  }
+
   return {
     chzzk: {
       clientId: required(env.CHZZK_CLIENT_ID, "CHZZK_CLIENT_ID"),
       clientSecret: required(env.CHZZK_CLIENT_SECRET, "CHZZK_CLIENT_SECRET"),
       baseUrl: env.CHZZK_OPENAPI_BASE_URL ?? CHZZK_OPENAPI_BASE_URL
     },
-    oauth: {
-      redirectUri: env.CHZZK_REDIRECT_URI ?? "http://127.0.0.1:8080/chzzk/oauth/callback"
-    },
+    oauth,
     tokenStorePath: resolve(env.CHZZK_TOKEN_STORE ?? ".chzzk-tokens.json")
   };
 }

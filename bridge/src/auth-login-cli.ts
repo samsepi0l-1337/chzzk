@@ -58,13 +58,17 @@ export async function main(options: AuthLoginCliOptions = {}): Promise<void> {
   });
   const callbackPromise = startOAuthCallbackServerFn({
     redirectUri: config.oauth.redirectUri,
-    expectedState: state
+    expectedState: state,
+    bindHost: config.oauth.callbackBindHost
   });
 
   stdout.log("브라우저에서 아래 URL로 CHZZK 로그인을 진행하세요.");
   stdout.log(authorizationUrl);
   stdout.log(`state=${state}`);
   stdout.log(`CHZZK Developers에 같은 redirectUri를 등록하세요: ${config.oauth.redirectUri}`);
+  if (config.oauth.callbackBindHost) {
+    stdout.log(`OAuth callback bind host: ${config.oauth.callbackBindHost}`);
+  }
 
   const callback = await callbackPromise;
   const token = await exchangeAuthorizationCodeFn({

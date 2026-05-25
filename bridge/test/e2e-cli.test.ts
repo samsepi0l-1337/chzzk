@@ -102,7 +102,7 @@ describe("e2e cli commands", () => {
         CHZZK_CLIENT_SECRET: "client-secret",
         CHZZK_CHANNEL_ID: "channel",
         MINECRAFT_WEBHOOK_SECRET: "webhook-secret",
-        CHZZK_REFRESH_TOKEN: "refresh-token"
+        CHZZK_TOKEN_STORE: __filename
       },
       stdout: {
         log: (value: string) => logs.push(value)
@@ -111,10 +111,9 @@ describe("e2e cli commands", () => {
 
     expect(logs).toContain("ok=CHZZK_CLIENT_SECRET");
     expect(logs).toContain("ok=MINECRAFT_WEBHOOK_SECRET");
-    expect(logs).toContain("ok=CHZZK_REFRESH_TOKEN");
+    expect(logs).toContain("ok=token store");
     expect(logs.join("\n")).not.toContain("client-secret");
     expect(logs.join("\n")).not.toContain("webhook-secret");
-    expect(logs.join("\n")).not.toContain("refresh-token");
   });
 
   it("fails bridge readiness when required env is missing", async () => {
@@ -122,7 +121,9 @@ describe("e2e cli commands", () => {
 
     await expect(
       checkEnvMain({
-        env: {},
+        env: {
+          CHZZK_TOKEN_STORE: "/tmp/missing-chzzk-token-store.json"
+        },
         stdout: {
           log: (value: string) => logs.push(value)
         }
@@ -130,7 +131,7 @@ describe("e2e cli commands", () => {
     ).rejects.toThrow(/E2E environment is not ready/);
 
     expect(logs).toContain("missing=CHZZK_CLIENT_ID");
-    expect(logs).toContain("missing=CHZZK_REFRESH_TOKEN or token store");
+    expect(logs).toContain("missing=token store");
   });
 
   it("prints invalid bridge readiness settings", async () => {
@@ -143,7 +144,7 @@ describe("e2e cli commands", () => {
           CHZZK_CLIENT_SECRET: "client-secret",
           CHZZK_CHANNEL_ID: "channel",
           MINECRAFT_WEBHOOK_SECRET: "webhook-secret",
-          CHZZK_REFRESH_TOKEN: "refresh-token",
+          CHZZK_TOKEN_STORE: __filename,
           WEBHOOK_MAX_ATTEMPTS: "0"
         },
         stdout: {
@@ -153,6 +154,5 @@ describe("e2e cli commands", () => {
     ).rejects.toThrow(/E2E environment is not ready/);
 
     expect(logs).toContain("invalid=WEBHOOK_MAX_ATTEMPTS must be greater than 0");
-    expect(logs.join("\n")).not.toContain("refresh-token");
   });
 });

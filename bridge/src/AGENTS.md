@@ -10,6 +10,7 @@
 - `load-env-file.ts` is explicit loading for CLI paths; do not turn the bridge into implicit dotenv autoload.
 - `config.ts` validates runtime env and numeric retry settings; empty values should fall back only where existing contract allows.
 - `chzzk-session.ts` owns Session subscribe and channel filtering before webhook delivery.
+- Chat test command is CHZZK `CHAT` content `!치지직마크 <amount>`; it requires `채팅 메시지 조회` scope and must keep the same `CHZZK_CHANNEL_ID` filter as donations.
 - `webhook-client.ts` owns HMAC signing and retry behavior.
 
 ## Failure Knowledge
@@ -17,6 +18,7 @@
 - If auth CLI fails on webhook env, split auth config from runtime config instead of making webhook env optional for live mode.
 - If live donation parsing fails, inspect fixture/payload shape before adding generic fallback fields.
 - If retry behavior fails, test status/error-specific behavior before increasing attempts.
+- If chat test does not fire, inspect Session chat subscription/scope logs before debugging plugin effects.
 
 ## Failure Counteraction Rule
 

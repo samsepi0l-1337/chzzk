@@ -6,7 +6,10 @@ export default defineConfig({
       provider: "v8",
       include: [
         "src/auth-login-cli.ts",
+        "src/auth-web-cli.ts",
+        "src/auth-web-server.ts",
         "src/auth-url-cli.ts",
+        "src/chat-command.ts",
         "src/chzzk-auth.ts",
         "src/chzzk-oauth.ts",
         "src/chzzk-session.ts",

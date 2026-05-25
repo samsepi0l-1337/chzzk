@@ -18,12 +18,15 @@ webhook:
   shared-secret: "change-me"
 sidebar:
   enabled: true
+auth:
+  url: ""
 ```
 
 사용 지점:
 
 - `webhook.host`, `webhook.port`, `webhook.path`, `webhook.shared-secret`: `ChzzkDonationPlugin.startWebhook`.
 - `sidebar.enabled`: 현재 기본 config에는 있지만 runtime sidebar 상태는 `PluginStateStore`의 `sidebarEnabled`를 사용한다.
+- `auth.url`: `/chzzk auth`가 표시하는 스트리머 OAuth token bootstrap 페이지 URL. 비어 있으면 명령은 미설정 메시지를 표시한다.
 
 config key를 추가하거나 의미를 바꾸면 `config.yml`, Docker entrypoint config 생성, 테스트, 문서를 함께 수정한다.
 
@@ -37,6 +40,8 @@ Docker config는 다음 값을 runtime 환경 변수로 받는다.
 - `MINECRAFT_WEBHOOK_SECRET`
 - `MINECRAFT_WEBHOOK_PORT`
 - `MINECRAFT_WEBHOOK_PATH`
+- `CHZZK_AUTH_URL`
+- `CHZZK_REDIRECT_URI` + `CHZZK_AUTH_PAGE_SECRET` (`CHZZK_AUTH_URL`이 없을 때 auth URL 생성)
 
 Docker 실행에서는 webhook host가 `0.0.0.0`으로 설정된다. 기본 resource config는 로컬 단독 실행을 위해 `127.0.0.1`을 사용한다.
 ## Runtime State

@@ -2,7 +2,7 @@
 
 이 저장소는 CHZZK 실시간 후원 이벤트를 Minecraft Paper 서버의 게임 효과로 변환한다. 런타임은 두 프로세스로 나뉜다.
 
-- `bridge/`: Node.js TypeScript 프로세스. CHZZK OpenAPI 인증을 갱신하고 Session Socket.IO 실시간 이벤트를 수신한다.
+- `bridge/`: Node.js TypeScript 프로세스. CHZZK OpenAPI 인증을 갱신하고 Session Socket.IO 실시간 donation/chat 이벤트를 수신한다.
 - `plugin/`: Java 21 Paper 플러그인. 로컬 HTTP webhook을 열고, HMAC 검증 후 Minecraft 메인 스레드에서 효과를 실행한다.
 
 ## 시스템 경계
@@ -23,9 +23,9 @@ flowchart LR
 이 저장소의 Minecraft 런타임 기준은 Paper 1.21.1 / Java 21이다. 자동 검증은 credential이 필요한 실제 CHZZK live smoke를 제외하고, 다음 입력→처리→출력 경계를 단위 테스트와 coverage로 확인한다.
 
 1. OAuth/토큰: refresh token 또는 token store 입력 → CHZZK token API 호출과 저장 → access token.
-2. Session: access token 입력 → session auth URL 생성, Socket.IO 연결, donation subscribe → 실시간 `DONATION` 수신.
-3. channelId 필터: `DONATION.channelId` 입력 → `CHZZK_CHANNEL_ID`와 정확 비교 → 일치 이벤트만 webhook 전달.
-4. DONATION 파싱: CHZZK `payAmount` 문자열 입력 → 양의 Java `int` 범위 정수 `amount` 변환 → Minecraft payload.
+2. Session: access token 입력 → session auth URL 생성, Socket.IO 연결, donation/chat subscribe → 실시간 `DONATION`/`CHAT` 수신.
+3. channelId 필터: `DONATION.channelId`/`CHAT.channelId` 입력 → `CHZZK_CHANNEL_ID`와 정확 비교 → 일치 이벤트만 webhook 전달.
+4. 입력 파싱: CHZZK `payAmount` 또는 채팅 `!치지직마크 <금액>` 입력 → 양의 Java `int` 범위 정수 `amount` 변환 → Minecraft payload.
 5. Webhook 전송: payload 입력 → raw JSON HMAC-SHA256 서명 → plugin HTTP POST.
 6. Plugin webhook 수신: POST body/signature 입력 → HMAC, JSON, `amount` int 검증 → `DonationEvent`.
 7. DonationService: `DonationEvent` 입력 → dedupe, tier exact match, target availability → `DonationResult`.
@@ -71,7 +71,8 @@ flowchart LR
 - `chzzk-auth.ts`: refresh token / authorization code 교환.
 - `token-store.ts`: 토큰 JSON 파일 저장.
 - `auth-cli.ts`: 토큰 저장을 위한 CLI 진입점.
-- `chzzk-session.ts`: CHZZK Session URL 생성, donation subscribe, Socket.IO 실시간 이벤트 수신.
+- `chzzk-session.ts`: CHZZK Session URL 생성, donation/chat subscribe, Socket.IO 실시간 이벤트 수신.
+- `chat-command.ts`: CHZZK `CHAT` content 중 `!치지직마크 <금액>`만 테스트 donation payload로 변환.
 - `donation-parser.ts`: CHZZK donation payload를 Minecraft webhook payload로 정규화.
 - `webhook-client.ts`: HMAC 서명, plugin webhook 전송, retry, readiness wait.
 - `src/types/socket.io-client.d.ts`: `socket.io-client@2.0.3`용 로컬 타입 선언.

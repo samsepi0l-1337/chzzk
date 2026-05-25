@@ -13,9 +13,11 @@ Docker compose 기준 파일:
 | `EULA`                         | 예                         | `true`                            | `paper-entrypoint.sh`; Minecraft EULA 수락 여부 |
 | `CHZZK_CLIENT_ID`              | 예                         | `your-client-id`                  | bridge CHZZK auth                               |
 | `CHZZK_CLIENT_SECRET`          | 예                         | `your-client-secret`              | bridge CHZZK auth                               |
-| `CHZZK_CHANNEL_ID`             | 예                         | `target-streamer-channel-id`      | bridge 후원 이벤트 대상 스트리머 채널 필터      |
-| `CHZZK_REFRESH_TOKEN`          | 첫 token store가 없으면 예 | empty                             | bridge 첫 live session token bootstrap          |
+| `CHZZK_CHANNEL_ID`             | 예                         | `target-streamer-channel-id`      | bridge 후원/채팅 이벤트 대상 스트리머 채널 필터 |
 | `CHZZK_REDIRECT_URI`           | 아니오                     | `http://127.0.0.1:8080/chzzk/oauth/callback` | `auth:url` / `auth:login` local OAuth callback |
+| `CHZZK_AUTH_CALLBACK_BIND_HOST` | 아니오                    | `0.0.0.0` on EC2 public callback  | `auth:login` callback server bind host override |
+| `CHZZK_AUTH_PAGE_SECRET`       | `auth:web`만 예            | random secret                     | streamer-facing OAuth login page access secret |
+| `CHZZK_AUTH_URL`               | 아니오                     | empty                             | Paper plugin `/chzzk auth`에 직접 표시할 URL override |
 | `CHZZK_OPENAPI_BASE_URL`       | 아니오                     | `https://openapi.chzzk.naver.com` | CHZZK API base URL                              |
 | `MINECRAFT_WEBHOOK_SECRET`     | 예                         | empty                             | bridge signature와 plugin HMAC 검증             |
 | `WEBHOOK_MAX_ATTEMPTS`         | 아니오                     | `3`                               | bridge webhook send retry                       |
@@ -25,12 +27,12 @@ Docker compose 기준 파일:
 
 운영에서는 `MINECRAFT_WEBHOOK_SECRET`을 비워두지 않는다. 루트 Docker compose는 `EULA`, `CHZZK_CLIENT_ID`, `CHZZK_CLIENT_SECRET`, `CHZZK_CHANNEL_ID`, `MINECRAFT_WEBHOOK_SECRET`이 비어 있으면 config 단계에서 실패한다.
 
-`CHZZK_CHANNEL_ID`는 효과를 실행할 스트리머의 채널 식별자다. CHZZK Session 구독 주체는 OAuth/token이 가리키는 계정이며, bridge는 수신된 `DONATION.channelId`가 이 값과 정확히 일치할 때만 plugin webhook을 호출한다. 과거 후원 내역 REST 조회 대상 채널을 지정하는 값은 아니며, 공식 문서상 과거 후원 내역 REST endpoint는 확인되지 않는다.
+`CHZZK_CHANNEL_ID`는 효과를 실행할 스트리머의 채널 식별자다. CHZZK Session 구독 주체는 OAuth/token이 가리키는 계정이며, bridge는 수신된 `DONATION.channelId` 또는 `CHAT.channelId`가 이 값과 정확히 일치할 때만 plugin webhook을 호출한다. 과거 후원 내역 REST 조회 대상 채널을 지정하는 값은 아니며, 공식 문서상 과거 후원 내역 REST endpoint는 확인되지 않는다.
+채팅 테스트 명령 `!치지직마크 <금액>`을 쓰려면 CHZZK Developers OAuth scope에 `후원 조회`와 `채팅 메시지 조회`를 모두 포함해 token store를 다시 만들어야 한다.
 
-`npm run auth`로 token을 bootstrap/exchange하는 경로는 webhook을 호출하지 않으므로
-`MINECRAFT_WEBHOOK_SECRET`을 요구하지 않는다. bridge live session 실행은 여전히 이 값을 요구한다.
-Docker 첫 live session에서 `/data/.chzzk-tokens.json`이 없고 `CHZZK_REFRESH_TOKEN`이 있으면 bridge가 token store를 생성하고 이후 실행에서 재사용한다.
+`npm run auth:login -- --env-file .env`와 `npm run auth:web -- --env-file .env`는 webhook을 호출하지 않으므로 `MINECRAFT_WEBHOOK_SECRET`을 요구하지 않는다. 두 명령은 `CHZZK_CLIENT_ID`, `CHZZK_CLIENT_SECRET`, OAuth callback `code`를 사용해 access token과 refresh token을 token store에 저장한다. bridge live session 실행은 여전히 `MINECRAFT_WEBHOOK_SECRET`을 요구한다.
 AWS native 배포에서는 기본 token store가 `$HOME/chzzk-runtime/bridge/.chzzk-tokens.json`이며 `scripts/aws-ec2-deploy.sh`가 bridge starter에 `CHZZK_TOKEN_STORE`를 설정한다.
+EC2에서 직접 OAuth callback을 받을 때는 `CHZZK_REDIRECT_URI=http://<Elastic-IP-or-public-DNS>:8080/chzzk/oauth/callback`로 등록하고 `CHZZK_AUTH_CALLBACK_BIND_HOST=0.0.0.0`을 함께 둔다. 스트리머가 직접 접속하는 `auth:web` 페이지는 `CHZZK_AUTH_PAGE_SECRET`이 일치할 때만 CHZZK 로그인 링크를 보여준다. AWS/Docker Paper runtime config는 `CHZZK_AUTH_URL`이 있으면 그 값을 `/chzzk auth` URL로 쓰고, 없으면 `CHZZK_REDIRECT_URI`와 `CHZZK_AUTH_PAGE_SECRET`에서 `/chzzk/oauth/login?secret=...` URL을 생성한다.
 
 ## bridge `.env.example`
 
@@ -45,9 +47,11 @@ Windows에서 CMD/PowerShell로 bridge를 띄울 때는 **`.env`를 Node가 자�
 | 변수                    | 기본/예시                                | 의미                                                                   |
 | ----------------------- | ---------------------------------------- | ---------------------------------------------------------------------- |
 | `CHZZK_TOKEN_STORE`     | `.chzzk-tokens.json`                     | token JSON 저장 경로                                                   |
-| `CHZZK_REFRESH_TOKEN`   | empty                                    | token store가 없을 때 첫 live session bootstrap에 사용할 refresh token |
 | `CHZZK_REDIRECT_URI`    | `http://127.0.0.1:8080/chzzk/oauth/callback` | `auth:url` / `auth:login` local OAuth callback                        |
-| `CHZZK_CHANNEL_ID`      | `target-streamer-channel-id`             | 필수. 수신 `DONATION.channelId` 검증 필터                              |
+| `CHZZK_AUTH_CALLBACK_BIND_HOST` | empty                           | public redirect URI를 EC2에서 받을 때 `0.0.0.0`로 bind                 |
+| `CHZZK_AUTH_PAGE_SECRET` | empty                                  | `auth:web` 접속 URL 보호용 secret                                      |
+| `CHZZK_AUTH_URL`        | empty                                  | Paper plugin `/chzzk auth`에 표시할 URL override                       |
+| `CHZZK_CHANNEL_ID`      | `target-streamer-channel-id`             | 필수. 수신 `DONATION`/`CHAT` `channelId` 검증 필터                     |
 | `MINECRAFT_WEBHOOK_URL` | `http://127.0.0.1:29371/chzzk/donations` | plugin webhook URL                                                     |
 | `MINECRAFT_WEBHOOK_HEALTH_URL` | `MINECRAFT_WEBHOOK_URL + /health` | plugin webhook readiness URL                                           |
 
@@ -78,12 +82,13 @@ plugin config:
 secret 변수:
 
 - `CHZZK_CLIENT_SECRET`
-- `CHZZK_REFRESH_TOKEN`
+- `CHZZK_AUTH_PAGE_SECRET`
 - `CHZZK_AUTH_CODE`
 - `MINECRAFT_WEBHOOK_SECRET`
 - token store 파일 내용
 
 실제 값을 커밋하지 않는다. 로그, 테스트 fixture, 문서 예시에는 placeholder만 쓴다.
+`CHZZK_AUTH_CALLBACK_BIND_HOST`는 secret이 아니지만, public callback 포트는 security group에서 관리자 IP로 제한한다.
 
 ## 변경 시 체크리스트
 
