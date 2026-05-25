@@ -41,8 +41,15 @@ export function normalizeDonation(
 }
 
 export function parsePayAmount(payAmount: unknown): number {
+  if (typeof payAmount === "number") {
+    if (!Number.isSafeInteger(payAmount) || payAmount <= 0 || payAmount > 2147483647) {
+      throw new Error(`Invalid payAmount: ${payAmount}`);
+    }
+    return payAmount;
+  }
+
   if (typeof payAmount !== "string") {
-    throw new Error(`Invalid payAmount: expected string, got ${typeof payAmount}`);
+    throw new Error(`Invalid payAmount: expected string or number, got ${typeof payAmount}`);
   }
 
   const normalized = payAmount.trim().replaceAll(",", "");

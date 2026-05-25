@@ -40,6 +40,11 @@ const sessionConfig = {
   targetChannelId: "target-channel"
 };
 
+const successfulDelivery = {
+  status: 202,
+  body: "{\"status\":\"ACCEPTED\",\"message\":\"accepted\"}"
+};
+
 function okJson(body: unknown): Response {
   return new Response(JSON.stringify(body), {
     status: 200,
@@ -174,9 +179,17 @@ describe("startChzzkDonationSession", () => {
   it("connects with Socket.IO options and handles native CHZZK events", async () => {
     const fetchCalls: { url: string; body?: BodyInit | null }[] = [];
     const sent: unknown[] = [];
+    const logger = {
+      error: vi.fn(),
+      warn: vi.fn(),
+      info: vi.fn()
+    };
     const socketInstance = await startChzzkDonationSession(
-      sessionConfig,
-      { send: vi.fn(async (payload) => sent.push(payload)) },
+      { ...sessionConfig, logger },
+      { send: vi.fn(async (payload) => {
+        sent.push(payload);
+        return successfulDelivery;
+      }) },
       async (url, init) => {
         fetchCalls.push({
           url,
@@ -261,6 +274,28 @@ describe("startChzzkDonationSession", () => {
       message: "chat command: !치지직마크 2,000",
       receivedAt: "2026-05-05T00:00:00.000Z"
     });
+    expect(logger.info).toHaveBeenCalledWith(
+      "Subscribed CHZZK session events",
+      { events: ["DONATION", "CHAT"] }
+    );
+    expect(logger.info).toHaveBeenCalledWith(
+      "Received CHZZK donation",
+      {
+        hasChannelId: true,
+        matchesTarget: true,
+        payAmountType: "string",
+        donationType: null,
+        hasMessage: true
+      }
+    );
+    expect(logger.info).toHaveBeenCalledWith(
+      "Forwarded CHZZK donation to Minecraft webhook",
+      expect.objectContaining({
+        amount: 1000,
+        webhookStatus: 202,
+        webhookBody: "{\"status\":\"ACCEPTED\",\"message\":\"accepted\"}"
+      })
+    );
   });
 
   it("routes typed message envelopes by eventType and type", async () => {
@@ -268,7 +303,10 @@ describe("startChzzkDonationSession", () => {
     const sent: unknown[] = [];
     await startChzzkDonationSession(
       sessionConfig,
-      { send: vi.fn(async (payload) => sent.push(payload)) },
+      { send: vi.fn(async (payload) => {
+        sent.push(payload);
+        return successfulDelivery;
+      }) },
       async (url, init) => {
         if (init.method === "GET") {
           return okJson({ content: { url: "wss://session.test/socket" } });
@@ -378,6 +416,71 @@ describe("startChzzkDonationSession", () => {
       expect.objectContaining({ amount: 30000, donatorNickname: "chat-b" }),
       expect.objectContaining({ amount: 50000, donatorNickname: "chat-c" })
     ]);
+  });
+
+  it("parses JSON string payloads from CHZZK socket events", async () => {
+    const subscribed: string[] = [];
+    const sent: unknown[] = [];
+    const logger = {
+      error: vi.fn(),
+      warn: vi.fn(),
+      info: vi.fn()
+    };
+    await startChzzkDonationSession(
+      { ...sessionConfig, logger },
+      { send: vi.fn(async (payload) => {
+        sent.push(payload);
+        return successfulDelivery;
+      }) },
+      async (url, init) => {
+        if (init.method === "GET") {
+          return okJson({ content: { url: "wss://session.test/socket" } });
+        }
+        subscribed.push(url);
+        return new Response(null, { status: 204 });
+      }
+    );
+
+    socket.emit("SYSTEM", JSON.stringify({
+      type: "connected",
+      data: { sessionKey: "string-key" }
+    }));
+    socket.emit("DONATION", JSON.stringify({
+      channelId: "target-channel",
+      payAmount: 1000,
+      donatorNickname: "string-donor",
+      donationText: "string-donation"
+    }));
+    socket.emit("CHAT", JSON.stringify({
+      channelId: "target-channel",
+      profile: { nickname: "string-chat" },
+      content: "!치지직마크 2,000"
+    }));
+    socket.emit("message", JSON.stringify({
+      eventType: "CHAT",
+      data: JSON.stringify({
+        channelId: "target-channel",
+        profile: { nickname: "typed-string-chat" },
+        content: "!치지직마크 3,000"
+      })
+    }));
+    socket.emit("CHAT", "not-json");
+    await flush();
+
+    expect(subscribed).toEqual([
+      "https://chzzk.test/open/v1/sessions/events/subscribe/donation?sessionKey=string-key",
+      "https://chzzk.test/open/v1/sessions/events/subscribe/chat?sessionKey=string-key"
+    ]);
+    expect(sent).toHaveLength(3);
+    expect(sent).toEqual([
+      expect.objectContaining({ amount: 1000, donatorNickname: "string-donor" }),
+      expect.objectContaining({ amount: 2000, donatorNickname: "string-chat" }),
+      expect.objectContaining({ amount: 3000, donatorNickname: "typed-string-chat" })
+    ]);
+    expect(logger.info).toHaveBeenCalledWith(
+      "Ignored CHZZK chat from non-target channel",
+      { channelId: null, targetChannelId: "target-channel" }
+    );
   });
 
   it("logs async event handling and socket failures", async () => {

@@ -11,6 +11,10 @@ import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.UUID;
 import java.util.function.Consumer;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabExecutor;
@@ -98,8 +102,10 @@ public final class ChzzkCommand implements TabExecutor {
             sender.sendMessage("CHZZK auth URL is not configured.");
             return;
         }
-        sender.sendMessage("CHZZK streamer auth URL:");
-        sender.sendMessage(authUrl);
+        sender.sendMessage(Component.text("인증하기")
+                .color(NamedTextColor.AQUA)
+                .decorate(TextDecoration.UNDERLINED)
+                .clickEvent(ClickEvent.openUrl(authUrl)));
     }
 
     private void handleTarget(CommandSender sender, String[] args) {

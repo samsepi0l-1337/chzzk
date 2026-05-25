@@ -12,11 +12,14 @@ describe("MinecraftWebhookClient", () => {
       },
       async () => {
         calls += 1;
-        return new Response("", { status: 202 });
+        return new Response("{\"status\":\"ACCEPTED\"}", { status: 202 });
       }
     );
 
-    await client.send(payload());
+    await expect(client.send(payload())).resolves.toEqual({
+      status: 202,
+      body: "{\"status\":\"ACCEPTED\"}"
+    });
     expect(calls).toBe(1);
   });
 
@@ -27,7 +30,10 @@ describe("MinecraftWebhookClient", () => {
         signature: String(new Headers(init.headers).get("X-Chzzk-Signature")),
         body: String(init.body)
       });
-      return new Response("{}", { status: calls.length === 1 ? 500 : 202 });
+      return new Response(
+        calls.length === 1 ? "{}" : "{\"status\":\"ACCEPTED\"}",
+        { status: calls.length === 1 ? 500 : 202 }
+      );
     };
     const client = new MinecraftWebhookClient(
       {
@@ -39,12 +45,15 @@ describe("MinecraftWebhookClient", () => {
       fetcher
     );
 
-    await client.send({
+    await expect(client.send({
       eventId: "evt-1",
       amount: 1000,
       donatorNickname: "viewer",
       message: "hello",
       receivedAt: "2026-05-05T00:00:00.000Z"
+    })).resolves.toEqual({
+      status: 202,
+      body: "{\"status\":\"ACCEPTED\"}"
     });
 
     expect(calls).toHaveLength(2);
@@ -107,11 +116,14 @@ describe("MinecraftWebhookClient", () => {
         if (calls === 1) {
           throw new Error("temporary network down");
         }
-        return new Response("", { status: 202 });
+        return new Response("{\"status\":\"ACCEPTED\"}", { status: 202 });
       }
     );
 
-    await client.send(payload());
+    await expect(client.send(payload())).resolves.toEqual({
+      status: 202,
+      body: "{\"status\":\"ACCEPTED\"}"
+    });
     expect(calls).toBe(2);
   });
 

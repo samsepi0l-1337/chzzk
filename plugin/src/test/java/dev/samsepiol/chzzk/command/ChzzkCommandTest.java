@@ -7,6 +7,10 @@ import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
 import org.junit.jupiter.api.Test;
 import org.bukkit.command.CommandSender;
 
@@ -56,9 +60,11 @@ final class ChzzkCommandTest {
 
         command.onCommand(sender.asCommandSender(), null, "chzzk", new String[] {"auth"});
 
-        assertEquals(List.of(
-                "CHZZK streamer auth URL:",
-                "http://43.203.108.176:8080/chzzk/oauth/login?secret=secret"), sender.messages());
+        assertEquals(List.of(Component.text("인증하기")
+                .color(NamedTextColor.AQUA)
+                .decorate(TextDecoration.UNDERLINED)
+                .clickEvent(ClickEvent.openUrl("http://43.203.108.176:8080/chzzk/oauth/login?secret=secret"))),
+                sender.messages());
     }
 
     @Test
@@ -97,7 +103,7 @@ final class ChzzkCommandTest {
         assertEquals(List.of("CHZZK auth URL is not configured."), sender.messages());
     }
 
-    private record FakeSender(String name, boolean admin, List<String> messages) {
+    private record FakeSender(String name, boolean admin, List<Object> messages) {
         FakeSender(String name, boolean admin) {
             this(name, admin, new ArrayList<>());
         }
@@ -108,7 +114,7 @@ final class ChzzkCommandTest {
                     new Class<?>[] {CommandSender.class},
                     (proxy, method, args) -> switch (method.getName()) {
                         case "sendMessage" -> {
-                            messages.add((String) args[0]);
+                            messages.add(args[0]);
                             yield null;
                         }
                         case "hasPermission" -> admin;

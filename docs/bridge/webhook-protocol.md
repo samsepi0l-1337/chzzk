@@ -62,7 +62,7 @@ X-Chzzk-Signature: sha256=<hmac-hex>
 - `amount`: JSON number, Java `int` 범위의 양의 정수
 - `receivedAt`: non-blank ISO instant string
 
-bridge는 CHZZK `payAmount` 문자열을 정수로 정규화할 때 `2,147,483,647` 이하인 양수만 webhook으로 보낸다. plugin은 같은 양수 int 범위를 다시 검증하며, tier 금액과 정확히 일치하지 않는 int 값은 `UNKNOWN_AMOUNT`로 처리한다.
+bridge는 CHZZK `payAmount` 문자열 또는 숫자를 정수로 정규화할 때 `2,147,483,647` 이하인 양수만 webhook으로 보낸다. plugin은 같은 양수 int 범위를 다시 검증하며, tier 금액과 정확히 일치하지 않는 int 값은 `UNKNOWN_AMOUNT`로 처리한다.
 
 `donatorNickname`, `message`는 없거나 null이면 빈 문자열로 처리한다.
 

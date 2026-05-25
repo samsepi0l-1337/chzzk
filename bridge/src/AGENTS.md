@@ -19,6 +19,9 @@
 - If live donation parsing fails, inspect fixture/payload shape before adding generic fallback fields.
 - If retry behavior fails, test status/error-specific behavior before increasing attempts.
 - If chat test does not fire, inspect Session chat subscription/scope logs before debugging plugin effects.
+- If Session events are visible in diagnostics but handlers ignore them, parse/log the raw payload first because CHZZK Socket.IO can deliver JSON strings.
+- If donation normalization fails on `payAmount`, verify the raw type first because live CHZZK donations can send number values, not only formatted strings.
+- If donation effects are missing, check whether `Received CHZZK donation` exists before debugging webhook or plugin behavior.
 
 ## Failure Counteraction Rule
 

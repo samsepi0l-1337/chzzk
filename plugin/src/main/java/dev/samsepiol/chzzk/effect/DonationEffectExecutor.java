@@ -24,8 +24,6 @@ public final class DonationEffectExecutor implements Consumer<DonationTier> {
     static final int PLAYER_AREA_PRELOAD_CHUNK_RADIUS = 5;
     static final int PLAYER_AREA_PRELOAD_CHUNKS_PER_TICK = 8;
     static final int TNT_SPAWN_RADIUS = 3;
-    static final int TNT_MIN_SPAWNS = 5;
-    static final int TNT_MAX_SPAWNS = 7;
     static final int TNT_FUSE_TICKS = 20 * 2;
     private static final int TNT_LOCATION_ATTEMPTS = 16;
     private final TargetService targetService;
@@ -106,7 +104,14 @@ public final class DonationEffectExecutor implements Consumer<DonationTier> {
     }
 
     static int pickTntSpawnCount(Random random) {
-        return TNT_MIN_SPAWNS + random.nextInt(TNT_MAX_SPAWNS - TNT_MIN_SPAWNS + 1);
+        int roll = random.nextInt(100);
+        if (roll < 90) {
+            return 3;
+        }
+        if (roll < 99) {
+            return 4;
+        }
+        return 5;
     }
 
     static Location pickTntSpawnLocation(Location targetLocation, Random random) {

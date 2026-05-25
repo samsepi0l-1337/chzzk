@@ -23,6 +23,9 @@
 - If signature verification fails, do not resend blindly; compare bridge `MINECRAFT_WEBHOOK_SECRET` with plugin runtime `webhook.shared-secret`.
 - If non-target donations or chat tests appear, do not widen delivery; drop missing or mismatched `channelId` before webhook delivery.
 - If chat tests do not arrive, do not debug Minecraft effects first; inspect chat subscription scope/logs.
+- If CHZZK Session subscribes but chat/donation handlers do not fire, parse/log the raw Socket.IO payload first because CHZZK can send JSON strings instead of objects.
+- If live donations fail with `Invalid payAmount`, do not assume CHZZK always sends a formatted string; accept only safe positive integer string/number shapes and keep plugin-side int validation.
+- If a streamer reports missing donation effects, do not infer from Minecraft logs alone; check bridge `Received CHZZK donation` and `Forwarded CHZZK donation to Minecraft webhook` logs to split Session receipt from webhook delivery.
 
 ## Failure Counteraction Rule
 

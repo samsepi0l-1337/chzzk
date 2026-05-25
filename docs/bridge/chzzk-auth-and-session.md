@@ -183,10 +183,21 @@ CHZZK Session 구독 API는 channel ID를 query/body로 받지 않는다. 대상
 - `connect_error`: 로그.
 - `disconnect`: 로그.
 
-공식 `DONATION` 메시지 필드는 `donationType`, `channelId`, `donatorChannelId`, `donatorNickname`, `payAmount`, `donationText`, `emojis`로 문서화되어 있으며 안정적인 event id 필드는 없다. webhook `eventId`는 bridge가 생성한 내부 중복 키다.
+CHZZK Socket.IO payload는 객체가 아니라 JSON 문자열로 들어올 수 있다. bridge는 event handler 진입 시 문자열 payload를 JSON으로 파싱한 뒤 `SYSTEM`, `DONATION`, `CHAT`, typed `message` 처리로 넘긴다. 파싱되지 않는 문자열은 기존 필터에 따라 무시된다.
+
+공식 `DONATION` 메시지 필드는 `donationType`, `channelId`, `donatorChannelId`, `donatorNickname`, `payAmount`, `donationText`, `emojis`로 문서화되어 있으며 안정적인 event id 필드는 없다. bridge는 `payAmount`가 숫자 또는 문자열로 들어오는 경우를 모두 양수 정수로 정규화한다. webhook `eventId`는 bridge가 생성한 내부 중복 키다.
 공식 `CHAT` 메시지 필드는 `channelId`, `senderChannelId`, `profile.nickname`, `content`, `messageTime`, `emojis` 등을 포함한다. bridge는 `content`가 정확히 `!치지직마크 <금액>` 형식일 때만 금액을 정규화하고, `eventId`는 `chat-test-<uuid>`로 생성한다.
 
 각 handler는 `logFailure`로 감싸져 socket listener에서 promise rejection이 누락되지 않게 한다.
+
+운영 로그는 후원 경로를 단계별로 남긴다.
+
+- `Subscribed CHZZK session events`: session 연결 후 `DONATION`, `CHAT` 구독 성공.
+- `Received CHZZK donation`: CHZZK Session에서 후원 payload 수신. `hasChannelId`, `matchesTarget`, `payAmountType`으로 필터/shape를 확인한다.
+- `Ignored CHZZK donation from non-target channel`: 수신했지만 `CHZZK_CHANNEL_ID`와 불일치.
+- `Forwarding CHZZK donation to Minecraft webhook`: webhook 전송 직전.
+- `Forwarded CHZZK donation to Minecraft webhook`: plugin webhook이 성공 응답을 반환.
+- `CHZZK DONATION delivery failed`: payload 정규화 또는 webhook 전송 실패.
 
 ## 변경 시 체크리스트
 

@@ -13,6 +13,11 @@ export interface MinecraftWebhookConfig {
 
 type Fetcher = (url: string, init: RequestInit) => Promise<Response>;
 
+export interface MinecraftWebhookDelivery {
+  status: number;
+  body: string;
+}
+
 export class MinecraftWebhookClient {
   private readonly maxAttempts: number;
   private readonly retryDelayMs: number;
@@ -25,11 +30,11 @@ export class MinecraftWebhookClient {
     this.retryDelayMs = Math.max(0, config.retryDelayMs ?? 500);
   }
 
-  async send(payload: MinecraftDonationPayload): Promise<void> {
+  async send(payload: MinecraftDonationPayload): Promise<MinecraftWebhookDelivery> {
     const body = JSON.stringify(payload);
     const signature = signBody(body, this.config.sharedSecret);
 
-    for (let attempt = 1; attempt <= this.maxAttempts; attempt += 1) {
+    for (let attempt = 1; ; attempt += 1) {
       let response: Response;
       try {
         response = await this.fetcher(this.config.url, {
@@ -48,11 +53,15 @@ export class MinecraftWebhookClient {
         continue;
       }
 
+      const responseBody = await response.text();
       if (response.ok) {
-        return;
+        return {
+          status: response.status,
+          body: responseBody
+        };
       }
       if (!isTransientStatus(response.status) || attempt === this.maxAttempts) {
-        throw new Error(`Minecraft webhook failed: ${response.status} ${await response.text()}`);
+        throw new Error(`Minecraft webhook failed: ${response.status} ${responseBody}`);
       }
 
       await delay(this.retryDelayMs);

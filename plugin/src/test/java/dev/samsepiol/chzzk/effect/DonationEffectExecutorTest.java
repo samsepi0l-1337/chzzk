@@ -74,10 +74,12 @@ final class DonationEffectExecutorTest {
     }
 
     @Test
-    void immediateTntCountUsesFiveToSevenSpawns() {
-        assertEquals(5, DonationEffectExecutor.pickTntSpawnCount(new FixedRandom(0)));
-        assertEquals(6, DonationEffectExecutor.pickTntSpawnCount(new FixedRandom(1)));
-        assertEquals(7, DonationEffectExecutor.pickTntSpawnCount(new FixedRandom(2)));
+    void immediateTntCountUsesWeightedThreeToFiveSpawns() {
+        assertEquals(3, DonationEffectExecutor.pickTntSpawnCount(new FixedRandom(0)));
+        assertEquals(3, DonationEffectExecutor.pickTntSpawnCount(new FixedRandom(89)));
+        assertEquals(4, DonationEffectExecutor.pickTntSpawnCount(new FixedRandom(90)));
+        assertEquals(4, DonationEffectExecutor.pickTntSpawnCount(new FixedRandom(98)));
+        assertEquals(5, DonationEffectExecutor.pickTntSpawnCount(new FixedRandom(99)));
     }
 
     @Test
@@ -105,7 +107,7 @@ final class DonationEffectExecutorTest {
         spawnTnt.setAccessible(true);
         invoke(spawnTnt, executor, target);
 
-        assertEquals(List.of(40, 40, 40, 40, 40), fuseTicks);
+        assertEquals(List.of(40, 40, 40), fuseTicks);
     }
 
     @Test
@@ -284,7 +286,7 @@ final class DonationEffectExecutorTest {
         public int nextInt(int bound) {
             if (first) {
                 first = false;
-                assertEquals(3, bound);
+                assertEquals(100, bound);
                 return 0;
             }
             assertEquals(7, bound);
