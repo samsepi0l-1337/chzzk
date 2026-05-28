@@ -8,7 +8,7 @@
 
 - Bukkit effects must run on main thread.
 - Random TP is within current X/Z +/-1000 and only safe ground positions.
-- Combat mob pool includes `SPIDER`, excludes `EVOKER`, and keeps Wither 1%.
+- Combat mob pool includes `SPIDER`, excludes `EVOKER`, and keeps Wither 0.5%.
 
 ## Failure Knowledge
 

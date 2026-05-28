@@ -71,6 +71,6 @@
 - 30,000원 TNT: target 반경 3블록 안에 TNT 3개(90%)·4개(9%)·5개(1%) 즉시 소환, fuse 40 ticks(2초).
 - 50,000원 랜덤 TP: 현재 위치 기준 X/Z 각각 1000블록 이내 지상 위치(최대 24회). 물속·용암 속·땅속·공중 부유 거부.
 - Sidebar: objective·각 score에 Paper `NumberFormat.blank()`로 줄 번호(1~9) 숨김. `/chzzk sidebar donations|deaths on|off`로 tier·사망 섹션 분리(`state.json`의 `sidebarDonationsEnabled`/`sidebarDeathsEnabled`, 기본 on).
-- 전투 몹 풀(`RandomPools.combatMobs()`): `SPIDER` 포함, `EVOKER` 없음. combat spawn(1·3마리) 시 위더 1%는 유지.
+- 전투 몹 풀(`RandomPools.combatMobs()`): `SPIDER` 포함, `EVOKER` 없음. combat spawn(1·3마리) 시 위더 0.5%는 유지.
 - Windows 네이티브 배포: `C:\chzzk`, `scripts/windows-deploy.ps1`·`windows-start.ps1`. SSH `Start-Process`만 쓰면 세션 종료 시 Java가 같이 내려가 작업 스케줄러 `ChzzkPaper`/`ChzzkBridge`로 분리 기동한다.
 - AWS/EC2 운영: 인터넷 공개는 SSH·Minecraft `25565/tcp`뿐이고 plugin webhook `29371`은 Docker 내부(`http://paper:29371/...`) 전용이며 security group에 열지 않는다. EC2 bridge는 `auth:login`으로 만든 volume `.chzzk-tokens.json` bootstrap을 권장한다.

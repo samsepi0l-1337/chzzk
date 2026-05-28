@@ -25,6 +25,7 @@ public final class DonationEffectExecutor implements Consumer<DonationTier> {
     static final int PLAYER_AREA_PRELOAD_CHUNKS_PER_TICK = 8;
     static final int TNT_SPAWN_RADIUS = 3;
     static final int TNT_FUSE_TICKS = 20 * 2;
+    private static final int COMBAT_WITHER_ROLL_BOUND = 200;
     private static final int TNT_LOCATION_ATTEMPTS = 16;
     private final TargetService targetService;
     private final Set<UUID> pluginKills = ConcurrentHashMap.newKeySet();
@@ -82,7 +83,7 @@ public final class DonationEffectExecutor implements Consumer<DonationTier> {
     }
 
     static EntityType pickCombatMob(Random random) {
-        if (random.nextInt(100) == 0) {
+        if (random.nextInt(COMBAT_WITHER_ROLL_BOUND) == 0) {
             return EntityType.WITHER;
         }
         return pick(RandomPools.combatMobs(), random);

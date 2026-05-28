@@ -28,6 +28,11 @@ final class DonationEffectExecutorTest {
     }
 
     @Test
+    void pickCombatMobUsesHalfPercentWitherRoll() {
+        assertEquals(EntityType.SPIDER, DonationEffectExecutor.pickCombatMob(new FixedRandom(199, 3)));
+    }
+
+    @Test
     void pickCombatMobFallsBackToCombatPool() {
         assertEquals(EntityType.SPIDER, DonationEffectExecutor.pickCombatMob(new FixedRandom(1, 3)));
     }
