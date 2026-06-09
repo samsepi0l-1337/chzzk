@@ -1,0 +1,5 @@
+releaseBuildAt=2026-06-09T07:07:37Z
+pluginJar=/Users/samsepiol/Documents/Cursor/Minecraft/chzzk/plugin/build/libs/chzzk-donation-0.1.0-obfuscated.jar
+bridgeDistDir=/Users/samsepiol/Documents/Cursor/Minecraft/chzzk/bridge/dist
+webDistDir=/Users/samsepiol/Documents/Cursor/Minecraft/chzzk/web/dist
+releaseStaging=/Users/samsepiol/Documents/Cursor/Minecraft/chzzk/release-staging

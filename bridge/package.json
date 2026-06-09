@@ -1,0 +1,29 @@
+{
+  "name": "chzzk-donation-bridge",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "test": "vitest run",
+    "coverage": "vitest run --coverage",
+    "build": "tsc -p tsconfig.json",
+    "build:release": "tsc -p tsconfig.json && node scripts/obfuscate-dist.cjs",
+    "start": "node dist/index.js",
+    "auth": "node dist/auth-cli.js",
+    "auth:url": "node dist/auth-url-cli.js",
+    "auth:login": "node dist/auth-login-cli.js",
+    "auth:web": "node dist/auth-web-cli.js",
+    "e2e:health": "npm run build --silent && node dist/e2e-health-cli.js",
+    "e2e:webhook": "npm run build --silent && node dist/e2e-webhook-cli.js",
+    "e2e:check-env": "npm run build --silent && node dist/e2e-check-env-cli.js"
+  },
+  "dependencies": {
+    "socket.io-client": "2.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.1",
+    "@vitest/coverage-v8": "4.1.0",
+    "javascript-obfuscator": "^4.1.1",
+    "typescript": "5.9.3",
+    "vitest": "4.1.0"
+  }
+}
